@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEA SUNQ Studio - Dịch Video AI</title>
+    <meta name="description"
+        content="Ứng dụng dịch video từ tiếng Anh, tiếng Trung sang tiếng Việt cá nhân hóa cho TEA SUNQ.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css?v=4.6">
+</head>
+
+<body class="dashboard-body">
+    <!-- Background Effects -->
+    <div class="bg-gradient"></div>
+    <div class="bg-grid"></div>
+
+    <div class="dashboard-container">
+        <!-- LEFT SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="/static/logo.png" alt="Logo" class="logo-img" width="44" height="44"
+                        style="border-radius: 50%; object-fit: cover; flex-shrink: 0;">
+                    <div class="logo-text">
+                        <h2>TEA SUNQ Studio</h2>
+                        <span class="logo-sub">Nigga</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar Navigation -->
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-tab="home">
+                    <span class="nav-icon">🏠</span>
+                    <span>Trang chủ</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="history">
+                    <span class="nav-icon">📅</span>
+                    <span>Lịch sử</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="editor">
+                    <span class="nav-icon">🎞️</span>
+                    <span>Trình chỉnh sửa</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="srt">
+                    <span class="nav-icon">📢</span>
+                    <span>SRT sang Audio</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span>Cài đặt</span>
+                </a>
+            </nav>
+
+
+        </aside>
+
+        <!-- MAIN PANEL CONTENT -->
+        <main class="main-content-area">
+            <!-- HEADER BAR -->
+            <header class="content-header">
+                <h2 id="pageTitle">Trang chủ</h2>
+                <div class="header-actions">
+                    <span class="version-badge">Bản mới nhất ✓</span>
+                </div>
+            </header>
+
+            <!-- TAB 1: HOME PAGE -->
+            <div id="homeTab" class="tab-content">
+                <!-- Top Row: File Drag & Drop + URL Input merged into a single clean card -->
+                <div class="upload-section-card">
+                    <div class="upload-title-bar">
+                        <span class="upload-title-icon">📤</span>
+                        <div>
+                            <div class="upload-title">Nguồn video đầu vào</div>
+                            <p class="upload-desc">Tải video từ máy tính hoặc dán link Youtube/TikTok</p>
+                        </div>
+                    </div>
+                    
+                    <div class="upload-grid">
+                        <div id="dropZone" class="drop-zone">
+                            <input type="file" id="fileInput" accept="video/*" class="file-input">
+                            <div class="drop-zone-content">
+                                <span class="upload-icon-cloud">📂</span>
+                                <p class="drop-text">Thả tập tin video vào đây</p>
+                                <p class="drop-sub">Hoặc click để chọn tệp từ máy tính</p>
+                            </div>
+                        </div>
+                        
+                        <div class="url-input-card-section">
+                            <div class="url-input-container">
+                                <span class="url-label">Đường dẫn mạng (Youtube, TikTok, ...):</span>
+                                <div class="url-input-group">
+                                    <input type="text" id="urlInput" placeholder="Dán link video của bạn vào đây...">
+                                    <button id="pasteBtn" class="btn-paste-sub">Dán link</button>
+                                </div>
+                            </div>
+                            <div class="drag-info-tip">
+                                💡 Nhập link từ các nguồn sẽ tự động tải phiên bản chất lượng tốt về máy chủ để xử lý dịch thuật.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parameters Controls Configuration Form - Rearranged into Grid Cards -->
+                <div class="config-panel-grid">
+                    <!-- CARD 1: CẤU HÌNH DỊCH & LỒNG TIẾNG -->
+                    <div class="config-card">
+                        <div class="config-card-header">
+                            <span class="card-header-icon">🗣️</span>
+                            <h3>Dịch thuật & Giọng đọc</h3>
+                        </div>
+                        <div class="config-card-body">
+                            <!-- Ngôn ngữ nguồn -->
+                            <div class="config-item">
+                                <label class="config-item-label">Ngôn ngữ nguồn</label>
+                                <div class="config-options" data-config="source_lang">
+                                    <button class="option-btn active" data-value="en">Tiếng Anh</button>
+                                    <button class="option-btn" data-value="zh">Tiếng Trung</button>
+                                    <button class="option-btn" data-value="auto">Tự động nhận dạng</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Giọng đọc -->
+                            <div class="config-item">
+                                <label class="config-item-label">Giọng lồng tiếng Việt</label>
+                                <div class="config-options" data-config="voice" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                    <button class="option-btn active" data-value="vi-VN-HoaiMyNeural">👩 Nữ (Hoài My)</button>
+                                    <button class="option-btn" data-value="vi-VN-NamMinhNeural">👨 Nam (Nam Minh)</button>
+                                    <button class="option-btn" data-value="eleven_adam">🗣️ Adam (ElevenLabs)</button>
+                                    <button class="option-btn" data-value="eleven_bella">🗣️ Bella (ElevenLabs)</button>
+                                    <button class="option-btn" data-value="none">❌ Chỉ chạy phụ đề</button>
+                                </div>
+                                <div style="margin-top: 8px;">
+                                    <button id="btnPreviewVoiceHome" class="btn-paste-sub" style="height: 32px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; cursor: pointer; border-radius: 6px; padding: 0 12px; background: var(--bg-hover); border: 1px solid var(--border); color: var(--text); font-weight: 500;">
+                                        <span>🔊 Nghe thử giọng đang chọn (3s)</span>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Giọng nói gốc -->
+                            <div class="config-item">
+                                <label class="config-item-label">Giọng nói gốc của video</label>
+                                <div class="config-options" data-config="separate_vocals">
+                                    <button class="option-btn active" data-value="false">🔊 Giữ giọng gốc (Nhanh)</button>
+                                    <button class="option-btn" data-value="true">🪄 Lọc bỏ giọng gốc (AI - Giữ nhạc nền)</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CARD 2: CẤU HÌNH HỆ THỐNG & XUẤT VIDEO -->
+                    <div class="config-card">
+                        <div class="config-card-header">
+                            <span class="card-header-icon">⚙️</span>
+                            <h3>Hệ thống & Phân nhóm</h3>
+                        </div>
+                        <div class="config-card-body">
+                            <!-- Chế độ xử lý -->
+                            <div class="config-item">
+                                <label class="config-item-label">Mô hình nhận dạng giọng nói (Whisper)</label>
+                                <div class="config-options" data-config="model_size">
+                                    <button class="option-btn active" data-value="base">Bình thường (Nhanh)</button>
+                                    <button class="option-btn" data-value="small">Độ chính xác cao (Chậm hơn)</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Chất lượng video -->
+                            <div class="config-item">
+                                <label class="config-item-label">Chất lượng video tải xuống</label>
+                                <div class="config-options" data-config="video_quality">
+                                    <button class="option-btn active" data-value="best">Mặc định (Tốt nhất)</button>
+                                    <button class="option-btn" data-value="1080p">1080p</button>
+                                    <button class="option-btn" data-value="720p">720p</button>
+                                    <button class="option-btn" data-value="360p">360p</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Phân nhóm / Bộ phim -->
+                            <div class="config-item">
+                                <label class="config-item-label">Thư mục & Tên tập (Phân nhóm phim)</label>
+                                <div class="group-inputs-container" style="display: flex; gap: 12px; width: 100%;">
+                                    <div style="flex: 1;">
+                                        <input type="text" id="seriesInput" list="seriesDatalist" placeholder="Tên bộ (VD: Phim Tây Du Ký)" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid var(--border); padding: 8px 12px; background: var(--bg-card); color: var(--text); font-size: 0.85rem; outline: none;">
+                                        <datalist id="seriesDatalist"></datalist>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <input type="text" id="episodeInput" placeholder="Tên tập (VD: Tập 01)" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid var(--border); padding: 8px 12px; background: var(--bg-card); color: var(--text); font-size: 0.85rem; outline: none;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOTTOM GENERATE ACTION PANEL -->
+                <div class="generate-action-panel">
+                    <button id="processBtn" class="btn-generate-main" disabled>
+                        <span class="btn-icon">⚡</span>
+                        <span class="btn-text">Bắt đầu dịch và tạo video</span>
+                    </button>
+                </div>
+
+                <div id="errorMessage" class="error-message hidden"></div>
+            </div>
+
+            <!-- TAB 2: PROGRESS LOADER TIMELINE -->
+            <div id="progressTab" class="tab-content hidden">
+                <div class="card progress-card">
+                    <div class="card-header">
+                        <h2 id="progressTitle">⚡ Đang xử lý dịch thuật</h2>
+                        <p id="videoTitle" class="card-description"></p>
+                    </div>
+
+                    <div class="overall-progress">
+                        <div class="progress-header">
+                            <span class="progress-label">Tổng tiến trình</span>
+                            <span id="overallPercent" class="progress-percent">0%</span>
+                        </div>
+                        <div class="progress-bar-wrapper">
+                            <div id="overallProgressBar" class="progress-bar">
+                                <div class="progress-bar-glow"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Steps Timeline -->
+                    <div class="steps-timeline">
+                        <div class="step" data-step="0">
+                            <div class="step-indicator">
+                                <div class="step-circle">
+                                    <span class="step-icon">📥</span>
+                                    <div class="step-spinner"></div>
+                                </div>
+                                <div class="step-line"></div>
+                            </div>
+                            <div class="step-content">
+                                <div class="step-header">
+                                    <span class="step-name">Tải / Nhận video</span>
+                                    <span class="step-status"></span>
+                                </div>
+                                <div class="step-progress-bar">
+                                    <div class="step-progress-fill"></div>
+                                </div>
+                                <p class="step-message"></p>
+                            </div>
+                        </div>
+
+                        <div class="step" data-step="1">
+                            <div class="step-indicator">
+                                <div class="step-circle">
+                                    <span class="step-icon">🎙️</span>
+                                    <div class="step-spinner"></div>
+                                </div>
+                                <div class="step-line"></div>
+                            </div>
+                            <div class="step-content">
+                                <div class="step-header">
+                                    <span class="step-name">Nhận diện giọng nói</span>
+                                    <span class="step-status"></span>
+                                </div>
+                                <div class="step-progress-bar">
+                                    <div class="step-progress-fill"></div>
+                                </div>
+                                <p class="step-message"></p>
+                            </div>
+                        </div>
+
+                        <div class="step" data-step="2">
+                            <div class="step-indicator">
+                                <div class="step-circle">
+                                    <span class="step-icon">🌐</span>
+                                    <div class="step-spinner"></div>
+                                </div>
+                                <div class="step-line"></div>
+                            </div>
+                            <div class="step-content">
+                                <div class="step-header">
+                                    <span class="step-name">Dịch thuật sang tiếng Việt</span>
+                                    <span class="step-status"></span>
+                                </div>
+                                <div class="step-progress-bar">
+                                    <div class="step-progress-fill"></div>
+                                </div>
+                                <p class="step-message"></p>
+                            </div>
+                        </div>
+
+                        <div class="step" data-step="3">
+                            <div class="step-indicator">
+                                <div class="step-circle">
+                                    <span class="step-icon">🗣️</span>
+                                    <div class="step-spinner"></div>
+                                </div>
+                                <div class="step-line"></div>
+                            </div>
+                            <div class="step-content">
+                                <div class="step-header">
+                                    <span class="step-name">Tạo lồng tiếng</span>
+                                    <span class="step-status"></span>
+                                </div>
+                                <div class="step-progress-bar">
+                                    <div class="step-progress-fill"></div>
+                                </div>
+                                <p class="step-message"></p>
+                            </div>
+                        </div>
+
+                        <div class="step" data-step="4">
+                            <div class="step-indicator">
+                                <div class="step-circle">
+                                    <span class="step-icon">🎬</span>
+                                    <div class="step-spinner"></div>
+                                </div>
+                            </div>
+                            <div class="step-content">
+                                <div class="step-header">
+                                    <span class="step-name">Xuất video thành phẩm</span>
+                                    <span class="step-status"></span>
+                                </div>
+                                <div class="step-progress-bar">
+                                    <div class="step-progress-fill"></div>
+                                </div>
+                                <p class="step-message"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: WORKSPACE EDITOR (Split screen) -->
+            <div id="workspaceTab" class="tab-content hidden">
+                <!-- Workspace Header Info & Main actions -->
+                <div class="workspace-header-bar">
+                    <div class="workspace-header-info">
+                        <span class="editor-badge-status">✓ Đang biên tập</span>
+                        <h2 id="editorVideoTitle">Tên video đang dịch.mp4</h2>
+                        <p id="editorVideoMeta" class="editor-video-meta">--s · -- MB · --x-- · Xử lý: -- giây</p>
+                    </div>
+                    <div class="workspace-header-actions">
+                        <button id="workspaceOriginalBtn" class="btn-regen-audio"
+                            style="display: none; background: rgba(239, 68, 68, 0.15); border-color: #ef4444; color: #ef4444; margin-right: 5px;">
+                            <span>🔌 Xem video gốc</span>
+                        </button>
+                        <button id="workspacePreviewBtn" class="btn-regen-audio"
+                            style="background: rgba(138, 92, 246, 0.15); border-color: var(--primary); color: var(--primary); margin-right: 5px;">
+                            <span>🔊 Xem trước lồng tiếng</span>
+                        </button>
+                        <button id="editorRegenAudioBtn" class="btn-regen-audio">
+                            <span>🔊 Tạo lại âm thanh</span>
+                        </button>
+                        <button id="exportBtn" class="btn-export-purple">
+                            <span class="btn-icon">⚡</span>
+                            <span class="btn-text">Xuất Video</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="workspace-layout">
+                    <!-- Left Column: Video Preview and Status -->
+                    <div class="workspace-left">
+                        <div class="preview-container">
+                            <video id="workspaceVideo" preload="auto"></video>
+                            <div id="videoBlurOverlay" style="display: none; position: absolute; left: 0; right: 0; z-index: 5; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); box-sizing: border-box; border-top: 1px dashed #ef4444; border-bottom: 1px dashed #ef4444; pointer-events: none;"></div>
+                            <div id="videoSubTitleOverlay" class="video-subtitle-overlay"></div>
+                            <img id="videoLogoOverlay" style="display: none; position: absolute; z-index: 100; cursor: move; border: 2px dashed transparent; box-sizing: border-box; user-select: none; max-width: 100%; left: 0px; top: 0px;">
+
+                            <!-- Custom Video Controls -->
+                            <div class="custom-video-controls" id="customVideoControls">
+                                <!-- Progress Bar -->
+                                <div class="video-progress-container" id="videoProgressContainer">
+                                    <div class="video-progress-bar">
+                                        <div class="video-progress-fill" id="videoProgressFill"></div>
+                                        <div class="video-progress-handle" id="videoProgressHandle"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Controls Row -->
+                                <div class="controls-row">
+                                    <div class="controls-left">
+                                        <button id="ctrlPrevSub" class="ctrl-btn" title="Câu trước">
+                                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                                <path d="M6 6h2v12H6zm3.5 6L18 6v12z" />
+                                            </svg>
+                                        </button>
+                                        <button id="ctrlPlayPause" class="ctrl-btn" title="Phát/Tạm dừng">
+                                            <svg id="playIcon" viewBox="0 0 24 24" width="18" height="18"
+                                                fill="currentColor">
+                                                <path d="M8 5v14l11-7z" />
+                                            </svg>
+                                            <svg id="pauseIcon" class="hidden" viewBox="0 0 24 24" width="18"
+                                                height="18" fill="currentColor">
+                                                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                                            </svg>
+                                        </button>
+                                        <button id="ctrlNextSub" class="ctrl-btn" title="Câu tiếp">
+                                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                                <path d="M6 18l8.5-6L6 6zm10-12h2v12h-2z" />
+                                            </svg>
+                                        </button>
+                                        <span id="ctrlTimeDisplay" class="ctrl-time-display">00:00.00 / 00:00.00</span>
+                                    </div>
+
+                                    <div class="controls-right">
+                                        <!-- Volume Control -->
+                                        <div class="volume-container">
+                                            <button id="ctrlMute" class="ctrl-btn" title="Mute/Unmute">
+                                                <svg id="volumeUpIcon" viewBox="0 0 24 24" width="18" height="18"
+                                                    fill="currentColor">
+                                                    <path
+                                                        d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+                                                </svg>
+                                                <svg id="volumeMuteIcon" class="hidden" viewBox="0 0 24 24" width="18"
+                                                    height="18" fill="currentColor">
+                                                    <path
+                                                        d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.21.05-.42.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
+                                                </svg>
+                                            </button>
+                                            <input type="range" id="ctrlVolumeSlider" min="0" max="1" step="0.05"
+                                                value="1" class="volume-slider">
+                                        </div>
+
+                                        <!-- Track Selector / Speed Selector -->
+                                        <div class="track-selector-container">
+                                            <button id="ctrlTrackBtn" class="ctrl-btn" title="Chọn Track / Tốc độ">
+                                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                                    <path
+                                                        d="M20.38 8.57l-1.23 1.85a8 8 0 0 1-.22 7.58H5.07A8 8 0 0 1 12 4a7.93 7.93 0 0 1 5.9 2.63l1.43-1.43A9.93 9.93 0 0 0 12 2a10 10 0 0 0-8 16h16a10 10 0 0 0 .38-9.43zM10 12c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zM12 6c-.28 0-.5.22-.5.5v3.66c.86.32 1.5.15 2-.5L15.35 8A6 6 0 0 0 12 6z" />
+                                                </svg>
+                                                <span class="btn-arrow">▼</span>
+                                            </button>
+                                            <div id="ctrlTrackMenu" class="track-menu hidden">
+                                                <div class="menu-header">Âm thanh</div>
+                                                <button class="menu-item active" id="menuAudioOriginal">🔌 Video
+                                                    gốc</button>
+                                                <button class="menu-item" id="menuAudioDubbed">🔊 Lồng tiếng</button>
+                                                <div class="menu-divider"></div>
+                                                <div class="menu-header">Tốc độ phát</div>
+                                                <button class="menu-item" data-speed="0.5">0.5x</button>
+                                                <button class="menu-item" data-speed="0.75">0.75x</button>
+                                                <button class="menu-item active" data-speed="1">1.0x</button>
+                                                <button class="menu-item" data-speed="1.25">1.25x</button>
+                                                <button class="menu-item" data-speed="1.5">1.5x</button>
+                                                <button class="menu-item" data-speed="2">2.0x</button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Subtitle Toggle -->
+                                        <button id="ctrlSubToggle" class="ctrl-btn active" title="Bật/Tắt Phụ đề">
+                                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                                <path
+                                                    d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zM6 9h8v2H6V9zm12 5H6v-2h12v2zm0-5h-2V7h2v2z" />
+                                            </svg>
+                                        </button>
+
+                                        <!-- Fullscreen -->
+                                        <button id="ctrlFullscreen" class="ctrl-btn" title="Toàn màn hình">
+                                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                                <path
+                                                    d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <!-- Bottom Column: Wide Subtitle Editor Layout -->
+                        <div class="workspace-bottom">
+                            <div class="card subtitle-table-card">
+                                <div class="subtitle-table-header">
+                                    <div class="subtitle-table-header-left">
+                                        <span class="header-icon">💬</span>
+                                        <h3>Phụ đề</h3>
+                                    </div>
+                                    <span class="status-badge-output">✓ Sẵn sàng xuất file</span>
+                                </div>
+
+                                <div class="subtitle-cards-list" id="subtitleList">
+                                    <!-- Render dynamic cards via JS -->
+                                </div>
+                            </div>
+                        </div>
+                    </div> <!-- đóng workspace-left -->
+
+                    <!-- Right Column: Dedicated Style & Voice Settings Panel -->
+                    <div class="workspace-right">
+                        <!-- SECTION 1: CHỮ -->
+                        <div class="style-section-card">
+                            <div class="style-section-title">
+                                <span class="style-icon-text">T</span>
+                                <h3>CHỮ</h3>
+                            </div>
+
+                            <div class="stylist-group">
+                                <label for="subFont">FONT CHỮ</label>
+                                <select id="subFont">
+                                    <option value="Arial">Arial</option>
+                                    <option value="Inter" selected>Hệ thống (Mặc định)</option>
+                                    <option value="Roboto">Roboto</option>
+                                    <option value="Times New Roman">Times New Roman</option>
+                                </select>
+                            </div>
+
+                            <div class="stylist-group">
+                                <div class="label-with-value">
+                                    <label for="subSize">KÍCH THƯỚC</label>
+                                    <span id="subSizeVal">22px</span>
+                                </div>
+                                <div class="sub-size-row-custom">
+                                    <input type="range" id="subSize" min="10" max="80" value="22" class="custom-slider">
+                                </div>
+                            </div>
+
+                            <div class="color-pickers-row">
+                                <div class="stylist-group">
+                                    <label>MÀU CHỮ</label>
+                                    <div class="color-picker-box">
+                                        <input type="color" id="subColor" value="#ffff00">
+                                    </div>
+                                </div>
+                                <div class="stylist-group">
+                                    <label>MÀU NỀN</label>
+                                    <div class="color-picker-box">
+                                        <input type="color" id="subBgColor" value="#000000">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="select-options-row">
+                                <div class="stylist-group">
+                                    <label for="subBg">NỀN</label>
+                                    <select id="subBg">
+                                        <option value="none" selected>Không nền</option>
+                                        <option value="box">Hộp nền</option>
+                                    </select>
+                                </div>
+                                <div class="stylist-group">
+                                    <label for="subPosition">VỊ TRÍ</label>
+                                    <select id="subPosition">
+                                        <option value="bottom" selected>Dưới</option>
+                                        <option value="center">Giữa</option>
+                                        <option value="top">Trên</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="stylist-group">
+                                <div class="label-with-value">
+                                    <label for="subBgOpacity">ĐỘ MỜ NỀN</label>
+                                    <span id="subBgOpacityVal">0%</span>
+                                </div>
+                                <input type="range" id="subBgOpacity" min="0" max="100" value="0" class="custom-slider">
+                            </div>
+                        </div>
+
+                        <!-- SECTION 2: HIỆU ỨNG -->
+                        <div class="style-section-card">
+                            <div class="style-section-title">
+                                <span class="style-icon-text">🎨</span>
+                                <h3>HIỆU ỨNG</h3>
+                            </div>
+
+                            <div class="toggle-control-row">
+                                <div class="toggle-info">
+                                    <div class="toggle-title-main">Viền chữ</div>
+                                    <div class="toggle-desc-sub">Giữ chữ nổi trên nền sáng.</div>
+                                </div>
+                                <label class="ui-switch">
+                                    <input type="checkbox" id="subOutline" checked>
+                                    <span class="slider-round"></span>
+                                </label>
+                            </div>
+
+                            <div class="stylist-group" id="outlineThicknessGroup">
+                                <div class="label-with-value">
+                                    <label for="subOutlineWidth">ĐỘ DÀY VIỀN</label>
+                                    <span id="subOutlineWidthVal">4px</span>
+                                </div>
+                                <input type="range" id="subOutlineWidth" min="1" max="10" value="4"
+                                    class="custom-slider">
+                            </div>
+
+                            <div class="toggle-control-row">
+                                <div class="toggle-info">
+                                    <div class="toggle-title-main">Bóng chữ</div>
+                                    <div class="toggle-desc-sub">Tăng tương phản khi video nhiều chi tiết.</div>
+                                </div>
+                                <label class="ui-switch">
+                                    <input type="checkbox" id="subShadow">
+                                    <span class="slider-round"></span>
+                                </label>
+                            </div>
+
+                            <!-- Blur Bar Settings -->
+                            <div class="toggle-control-row" style="margin-top: 15px;">
+                                <div class="toggle-info">
+                                    <div class="toggle-title-main">Thanh Làm Mờ (Blur Bar)</div>
+                                    <div class="toggle-desc-sub">Che đi phụ đề hoặc logo gốc.</div>
+                                </div>
+                                <label class="ui-switch">
+                                    <input type="checkbox" id="blurBarToggle">
+                                    <span class="slider-round"></span>
+                                </label>
+                            </div>
+                            <div id="blurBarSettingsGroup" class="hidden">
+                                <div class="stylist-group" style="margin-top: 10px;">
+                                    <div class="label-with-value">
+                                        <label for="blurBarYSlider">VỊ TRÍ (TỪ TRÊN XUỐNG)</label>
+                                        <span id="blurBarYVal">85%</span>
+                                    </div>
+                                    <input type="range" id="blurBarYSlider" min="0" max="100" step="1" value="85" class="custom-slider">
+                                </div>
+                                <div class="stylist-group" style="margin-top: 10px;">
+                                    <div class="label-with-value">
+                                        <label for="blurBarHSlider">CHIỀU CAO</label>
+                                        <span id="blurBarHVal">15%</span>
+                                    </div>
+                                    <input type="range" id="blurBarHSlider" min="5" max="50" step="1" value="15" class="custom-slider">
+                                </div>
+                                <div class="stylist-group" style="margin-top: 10px;">
+                                    <div class="label-with-value">
+                                        <label for="blurBarIntensitySlider">CƯỜNG ĐỘ MỜ</label>
+                                        <span id="blurBarIntensityVal">15</span>
+                                    </div>
+                                    <input type="range" id="blurBarIntensitySlider" min="1" max="50" step="1" value="15" class="custom-slider">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SECTION 3: LỒNG TIẾNG -->
+                        <div class="style-section-card">
+                            <div class="style-section-title">
+                                <span class="style-icon-text">🗣️</span>
+                                <h3>LỒNG TIẾNG</h3>
+                            </div>
+                            <div class="stylist-group">
+                                <label for="workspaceVoiceSelect">GIỌNG ĐỌC CUỐI</label>
+                                <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
+                                    <select id="workspaceVoiceSelect" style="flex: 1;">
+                                        <option value="vi-VN-HoaiMyNeural">👩 Giọng nữ (Hoài My)</option>
+                                        <option value="vi-VN-NamMinhNeural" selected>👨 Giọng nam (Nam Minh)</option>
+                                        <option value="eleven_adam">🗣️ ElevenLabs (Adam - Nam)</option>
+                                        <option value="eleven_bella">🗣️ ElevenLabs (Bella - Nữ)</option>
+                                        <option value="none">❌ Không lồng tiếng</option>
+                                    </select>
+                                    <button id="btnPreviewVoiceWorkspace" class="btn-paste-sub" style="height: 38px; width: 38px; min-width: 38px; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: var(--bg-hover); border: 1px solid var(--border); color: var(--text); cursor: pointer;" title="Nghe thử giọng đang chọn">
+                                        <span>🔊</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SECTION 4: ÂM THANH -->
+                        <div class="style-section-card">
+                            <div class="style-section-title">
+                                <span class="style-icon-text">🔊</span>
+                                <h3>ÂM THANH</h3>
+                            </div>
+                            <div class="stylist-group">
+                                <div class="label-with-value">
+                                    <label for="wsOriginalVolume">ÂM LƯỢNG GỐC</label>
+                                    <span id="wsOriginalVolumeVal">15%</span>
+                                </div>
+                                <input type="range" id="wsOriginalVolume" min="0" max="1" step="0.05" value="0.15" class="custom-slider">
+                            </div>
+                            <div class="stylist-group">
+                                <div class="label-with-value">
+                                    <label for="wsDubbedVolume">ÂM LƯỢNG LỒNG TIẾNG</label>
+                                    <span id="wsDubbedVolumeVal">100%</span>
+                                </div>
+                                <input type="range" id="wsDubbedVolume" min="0" max="2" step="0.05" value="1.0" class="custom-slider">
+                            </div>
+                            <div class="stylist-group" style="margin-top: 15px;">
+                                <label class="checkbox-container" style="display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 0.85rem; color: var(--text); cursor: pointer;">
+                                    <input type="checkbox" id="wsSeparateVocals" style="width: 16px; height: 16px; cursor: pointer;">
+                                    <span>Lọc bỏ giọng nói gốc (Giữ nhạc nền bằng AI)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- SECTION 5: THƯ MỤC XUẤT -->
+                        <div class="style-section-card" style="margin-top: 15px;">
+                            <div class="style-section-title">
+                                <span class="style-icon-text">📁</span>
+                                <h3>THƯ MỤC XUẤT</h3>
+                            </div>
+                            <div class="stylist-group">
+                                <label for="wsOutputFolderSelect">CHỌN THƯ MỤC LƯU VIDEO</label>
+                                <select id="wsOutputFolderSelect" style="width: 100%;">
+                                    <option value="default" selected>📁 Mặc định (Thư mục outputs/)</option>
+                                    <option value="custom">⚙️ Nhập đường dẫn thư mục tùy chọn...</option>
+                                </select>
+                            </div>
+                            <div class="stylist-group hidden" id="wsCustomOutputDirGroup" style="margin-top: 10px;">
+                                <label for="wsCustomOutputDir">ĐƯỜNG DẪN THƯ MỤC CỤC BỘ</label>
+                                <input type="text" id="wsCustomOutputDir" placeholder="Ví dụ: D:/Videos/Output" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text);">
+                            </div>
+                        </div>
+
+                        <!-- SECTION 6: LOGO / WATERMARK -->
+                        <div class="style-section-card" style="margin-top: 15px;">
+                            <div class="style-section-title">
+                                <span class="style-icon-text">🖼️</span>
+                                <h3>LOGO / WATERMARK</h3>
+                            </div>
+                            
+                            <div class="stylist-group" style="margin-bottom: 10px;">
+                                <label for="logoUploadInput">TẢI LÊN LOGO (PNG/JPG)</label>
+                                <input type="file" id="logoUploadInput" accept="image/png, image/jpeg" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px dashed var(--border); background: var(--bg-card); color: var(--text); cursor: pointer;">
+                            </div>
+
+                            <div id="logoSettingsGroup" class="hidden">
+                                <div class="toggle-control-row" style="margin-bottom: 10px;">
+                                    <div class="toggle-info">
+                                        <div class="toggle-title-main">Hiển thị Logo</div>
+                                        <div class="toggle-desc-sub">Bật/tắt hiển thị trên video.</div>
+                                    </div>
+                                    <label class="ui-switch">
+                                        <input type="checkbox" id="logoVisibleToggle" checked>
+                                        <span class="slider-round"></span>
+                                    </label>
+                                </div>
+                                
+                                <div class="stylist-group">
+                                    <div class="label-with-value">
+                                        <label for="logoSizeSlider">KÍCH THƯỚC (% RỘNG)</label>
+                                        <span id="logoSizeVal">15%</span>
+                                    </div>
+                                    <input type="range" id="logoSizeSlider" min="5" max="50" step="1" value="15" class="custom-slider">
+                                </div>
+                                <div class="stylist-group" style="margin-top: 10px;">
+                                    <div class="label-with-value">
+                                        <label for="logoOpacitySlider">ĐỘ MỜ</label>
+                                        <span id="logoOpacityVal">100%</span>
+                                    </div>
+                                    <input type="range" id="logoOpacitySlider" min="10" max="100" step="1" value="100" class="custom-slider">
+                                </div>
+                                <div style="margin-top: 10px; font-size: 12px; color: var(--text-secondary); font-style: italic;">
+                                    * Kéo thả logo trực tiếp trên video để vị trí.
+                                </div>
+                                <button id="removeLogoBtn" style="width: 100%; margin-top: 10px; padding: 6px; border-radius: 4px; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #ef4444; cursor: pointer;">
+                                    Xóa Logo
+                                </button>
+                            </div>
+                        </div>
+                    </div> <!-- đóng workspace-right -->
+                </div> <!-- đóng workspace-layout -->
+            </div> <!-- đóng workspaceTab -->
+
+            <!-- TAB 7: SRT SANG AUDIO -->
+            <div id="srtTab" class="tab-content hidden">
+                <div class="workspace-header-bar">
+                    <div class="workspace-header-info">
+                        <span class="editor-badge-status">🔊 Công cụ lồng tiếng</span>
+                        <h2>SRT sang Audio</h2>
+                        <p class="editor-video-meta">Tạo file âm thanh lồng tiếng chất lượng cao từ file phụ đề SRT</p>
+                    </div>
+                    <div class="workspace-header-actions">
+                        <button id="srtGenerateBtn" class="btn-export-purple">
+                            <span class="btn-icon">🔊</span>
+                            <span class="btn-text">Tạo audio</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="workspace-layout">
+                    <!-- Left Column: SRT Input and Textarea -->
+                    <div class="workspace-left">
+                        <div class="card srt-input-card">
+                            <div class="card-header flex-header">
+                                <div class="header-title-row">
+                                    <span class="header-icon">📂</span>
+                                    <h3>Phần SRT</h3>
+                                </div>
+                                <button id="srtUploadBtn" class="btn-paste-sub">Upload SRT</button>
+                                <input type="file" id="srtFileInput" accept=".srt" class="hidden"
+                                    style="display: none;">
+                            </div>
+
+                            <div class="srt-file-status-inline">
+                                <input type="text" id="srtFileStatusText" placeholder="Chưa chọn file .srt" readonly>
+                                <button id="srtChooseFileBtn" class="btn-choose-srt">Chọn file SRT</button>
+                            </div>
+
+                            <div class="srt-paste-header"
+                                style="display: flex; align-items: center; margin-bottom: 10px;">
+                                <span class="paste-icon" style="margin-right: 5px;">📝</span>
+                                <span>Hoặc nhập phụ đề trực tiếp</span>
+                                <button id="srtParseBtn" class="btn-paste-sub" style="margin-left: auto;">Phân tích phụ đề</button>
+                            </div>
+
+                            <textarea id="srtTextArea" class="srt-editor-textarea"
+                                style="width: 100%; height: 320px;"
+                                placeholder="1
+00:00:00,000 --> 00:00:02,000
+Nội dung cần lồng tiếng..."></textarea>
+
+                            <div id="srtParseStatus" class="srt-parse-status hidden"
+                                style="padding: 10px; border-radius: 6px; font-size: 14px; margin-top: 5px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Voice selection and Output info -->
+                    <div class="workspace-right">
+                        <div class="card srt-voice-card" style="height: 100%; background: transparent; border: none; padding: 0; box-shadow: none;">
+                            <div class="card-header flex-header" style="padding: 0 0 16px 0; border-bottom: 1px dashed var(--border); margin-bottom: 16px;">
+                                <div class="header-title-row">
+                                    <span class="header-icon">🎙️</span>
+                                    <h3>Thiết lập giọng & đầu ra</h3>
+                                </div>
+                            </div>
+
+                            <div class="voice-selection-body" style="padding-top: 5px;">
+                                <label class="control-label"
+                                    style="display: block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; color: var(--text-secondary);">Phân loại giọng đọc</label>
+                                <div class="voice-gender-segmented">
+                                    <button id="srtGenderMaleBtn" class="gender-segment-btn active">
+                                        <span>♂️ Nam</span>
+                                    </button>
+                                    <button id="srtGenderFemaleBtn" class="gender-segment-btn">
+                                        <span>♀️ Nữ</span>
+                                    </button>
+                                </div>
+
+                                <div class="stylist-group" style="margin-top: 15px;">
+                                    <label class="control-label" style="display: block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; color: var(--text-secondary);">Chọn giọng đọc cụ thể</label>
+                                    <select id="srtVoiceSelect">
+                                        <option value="vi-VN-NamMinhNeural" selected>👨 Giọng nam (Nam Minh)</option>
+                                    </select>
+                                </div>
+
+                                <div class="output-file-info-section" style="margin-top: 30px;">
+                                    <div class="output-file-header"
+                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                        <span style="font-weight: 700; font-size: 0.78rem; text-transform: uppercase; color: var(--text-secondary);">File Audio kết quả</span>
+                                        <span class="badge-status-output"
+                                            style="font-size: 11px; color: #a5b4fc; background: rgba(129, 140, 248, 0.12); border: 1px solid rgba(129, 140, 248, 0.2); padding: 4px 10px; border-radius: 20px; cursor: pointer; font-weight: 600; transition: all 0.2s ease;">Đổi thư mục lưu</span>
+                                    </div>
+                                    <div class="output-file-box"
+                                        style="padding: 16px; border-radius: var(--radius-md); background: rgba(0,0,0,0.25); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;">
+                                        <div>
+                                            <p class="output-path-label"
+                                                style="font-size: 10px; color: var(--text-muted); margin: 0 0 2px 0; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">
+                                                Nơi lưu</p>
+                                            <p class="output-path-val"
+                                                style="font-size: 12px; color: var(--text-secondary); margin: 0; font-family: monospace; word-break: break-all;">
+                                                D:\LINH TINH\DICHVIDEO\outputs</p>
+                                        </div>
+                                        <div style="border-top: 1px dashed var(--border); padding-top: 8px; margin-top: 4px;">
+                                            <p class="output-path-label"
+                                                style="font-size: 10px; color: var(--text-muted); margin: 0 0 2px 0; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">
+                                                Tên tệp tin xuất</p>
+                                            <p id="srtOutputFileName" class="output-file-name"
+                                                style="font-size: 13px; color: var(--accent-primary); margin: 0; font-weight: 700; font-family: monospace; word-break: break-all;">
+                                                srt-sang-audio-20260630-133625.mp3</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Action button when completed -->
+                                <div id="srtResultActionContainer" class="srt-result-actions hidden"
+                                    style="margin-top: 30px;">
+                                    <a id="srtDownloadAudioBtn" href="#" class="btn-download"
+                                        style="width: 100%; justify-content: center; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                                        <span>📥 Tải file âm thanh</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: FINAL SUCCESS RESULT -->
+            <div id="resultTab" class="tab-content hidden">
+                <div class="card result-card">
+                    <div class="success-icon">
+                        <span>🎉</span>
+                    </div>
+                    <h2>Video đã được dịch thành công!</h2>
+                    <p id="resultTitle" class="card-description"></p>
+
+                    <div class="result-actions">
+                        <a id="downloadBtn" href="#" class="btn-download">
+                            <span>Tải video thành phẩm</span>
+                        </a>
+
+                        <button id="newJobBtn" class="btn-new">
+                            <span>Dịch video khác</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: ERROR SCREEN -->
+            <div id="errorTab" class="tab-content hidden">
+                <div class="card error-card">
+                    <div class="error-icon">
+                        <span>❌</span>
+                    </div>
+                    <h2>Đã xảy ra lỗi</h2>
+                    <p id="errorDetail" class="card-description error-text"></p>
+
+                    <button id="retryBtn" class="btn-process-purple">
+                        <span class="btn-text">Thử lại</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- TAB 6: HISTORY TAB -->
+            <div id="historyTab" class="tab-content hidden">
+                <div class="card history-card">
+                    <div class="card-header flex-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <div>
+                            <h2>Kết quả đã tạo</h2>
+                            <p class="card-description">Mở lại kết quả video, audio hoặc dọn project cũ.</p>
+                        </div>
+                        <button id="btnCreateFolder" class="btn-paste-sub" style="height: 38px; padding: 0 16px; border-radius: 6px; font-weight: 500; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; cursor: pointer; background: var(--bg-hover); border: 1px solid var(--border); color: var(--text);">
+                            <span>📁 +</span> <span>Tạo thư mục sẵn</span>
+                        </button>
+                    </div>
+                    <div id="historyList" class="history-list">
+                        <!-- Render dynamic list items in script.js -->
+                        <div class="empty-history">Chưa có dự án dịch video nào được tạo.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 8: SETTINGS -->
+            <div id="settingsTab" class="tab-content hidden">
+                <div class="settings-page">
+
+                    <!-- NHÓM 1: API KEYS -->
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <span class="settings-icon">🔑</span>
+                            <div>
+                                <h3>API Keys</h3>
+                                <p class="settings-desc">Quản lý các khóa API cho dịch thuật và giọng đọc AI.</p>
+                            </div>
+                        </div>
+                        <div class="settings-card-body">
+                            <div class="api-key-row">
+                                <div class="api-key-info">
+                                    <span class="api-key-name">Gemini</span>
+                                    <span id="statusGemini" class="api-status">⚠️ Chưa cấu hình</span>
+                                </div>
+                                <div class="api-key-input-group">
+                                    <input type="password" id="keyGemini" placeholder="Dán API Key Gemini...">
+                                    <button class="btn-toggle-eye" onclick="toggleKeyVis('keyGemini', this)">👁️</button>
+                                </div>
+                                <a href="https://aistudio.google.com/" target="_blank" class="api-link">Lấy key miễn phí →</a>
+                            </div>
+                            <div class="api-key-row">
+                                <div class="api-key-info">
+                                    <span class="api-key-name">Groq</span>
+                                    <span id="statusGroq" class="api-status">⚠️ Chưa cấu hình</span>
+                                </div>
+                                <div class="api-key-input-group">
+                                    <input type="password" id="keyGroq" placeholder="Dán API Key Groq...">
+                                    <button class="btn-toggle-eye" onclick="toggleKeyVis('keyGroq', this)">👁️</button>
+                                </div>
+                                <a href="https://console.groq.com/" target="_blank" class="api-link">Lấy key miễn phí →</a>
+                            </div>
+                            <div class="api-key-row">
+                                <div class="api-key-info">
+                                    <span class="api-key-name">GitHub Token</span>
+                                    <span id="statusGithub" class="api-status">⚠️ Chưa cấu hình</span>
+                                </div>
+                                <div class="api-key-input-group">
+                                    <input type="password" id="keyGithub" placeholder="Dán GitHub Token...">
+                                    <button class="btn-toggle-eye" onclick="toggleKeyVis('keyGithub', this)">👁️</button>
+                                </div>
+                                <a href="https://github.com/settings/tokens" target="_blank" class="api-link">Lấy token miễn phí →</a>
+                            </div>
+                            <div class="api-key-row">
+                                <div class="api-key-info">
+                                    <span class="api-key-name">SambaNova</span>
+                                    <span id="statusSambanova" class="api-status">⚠️ Chưa cấu hình</span>
+                                </div>
+                                <div class="api-key-input-group">
+                                    <input type="password" id="keySambanova" placeholder="Dán API Key SambaNova...">
+                                    <button class="btn-toggle-eye" onclick="toggleKeyVis('keySambanova', this)">👁️</button>
+                                </div>
+                                <a href="https://cloud.sambanova.ai/" target="_blank" class="api-link">Lấy key miễn phí →</a>
+                            </div>
+                            <div class="api-key-row">
+                                <div class="api-key-info">
+                                    <span class="api-key-name">ElevenLabs</span>
+                                    <span id="statusElevenlabs" class="api-status">⚠️ Chưa cấu hình</span>
+                                </div>
+                                <div class="api-key-input-group">
+                                    <input type="password" id="keyElevenlabs" placeholder="Dán API Key ElevenLabs...">
+                                    <button class="btn-toggle-eye" onclick="toggleKeyVis('keyElevenlabs', this)">👁️</button>
+                                </div>
+                                <a href="https://elevenlabs.io/" target="_blank" class="api-link">Đăng ký tài khoản →</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NHÓM 2: THƯ MỤC LƯU TRỮ -->
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <span class="settings-icon">📂</span>
+                            <div>
+                                <h3>Thư mục lưu trữ</h3>
+                                <p class="settings-desc">Đường dẫn thư mục tải video, xuất video và file tạm.</p>
+                            </div>
+                        </div>
+                        <div class="settings-card-body">
+                            <div class="dir-row">
+                                <label>Tải video (Downloads)</label>
+                                <input type="text" id="dirDownloads" placeholder="Đường dẫn thư mục Downloads">
+                            </div>
+                            <div class="dir-row">
+                                <label>Xuất video (Outputs)</label>
+                                <input type="text" id="dirOutputs" placeholder="Đường dẫn thư mục Outputs">
+                            </div>
+                            <div class="dir-row">
+                                <label>File tạm (Temp)</label>
+                                <input type="text" id="dirTemp" placeholder="Đường dẫn thư mục Temp">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NHÓM 3: GIỌNG ĐỌC MẶC ĐỊNH -->
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <span class="settings-icon">🎙️</span>
+                            <div>
+                                <h3>Giọng đọc mặc định</h3>
+                                <p class="settings-desc">Thiết lập giọng TTS và ElevenLabs Voice IDs.</p>
+                            </div>
+                        </div>
+                        <div class="settings-card-body">
+                            <div class="voice-row">
+                                <label>Giọng nữ mặc định</label>
+                                <select id="voiceFemale">
+                                    <option value="vi-VN-HoaiMyNeural">👩 Hoài My (Neural)</option>
+                                </select>
+                            </div>
+                            <div class="voice-row">
+                                <label>Giọng nam mặc định</label>
+                                <select id="voiceMale">
+                                    <option value="vi-VN-NamMinhNeural">👨 Nam Minh (Neural)</option>
+                                </select>
+                            </div>
+                            <div class="voice-row">
+                                <label>ElevenLabs Voice ID (Adam)</label>
+                                <input type="text" id="voiceAdamId" placeholder="pNInz6obpgqTkFyR25v3">
+                            </div>
+                            <div class="voice-row">
+                                <label>ElevenLabs Voice ID (Bella)</label>
+                                <input type="text" id="voiceBellaId" placeholder="EXAVITQu4vr4xnSDxMaL">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NHÓM 4: ÂM THANH MẶC ĐỊNH -->
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <span class="settings-icon">🔊</span>
+                            <div>
+                                <h3>Âm thanh mặc định</h3>
+                                <p class="settings-desc">Mức âm lượng gốc và lồng tiếng mặc định cho dự án mới.</p>
+                            </div>
+                        </div>
+                        <div class="settings-card-body">
+                            <div class="volume-row">
+                                <label>Âm lượng audio gốc</label>
+                                <div class="volume-slider-group">
+                                    <input type="range" id="volOriginal" min="0" max="100" value="15">
+                                    <span id="volOriginalVal" class="volume-val">15%</span>
+                                </div>
+                            </div>
+                            <div class="volume-row">
+                                <label>Âm lượng lồng tiếng</label>
+                                <div class="volume-slider-group">
+                                    <input type="range" id="volDubbed" min="0" max="100" value="100">
+                                    <span id="volDubbedVal" class="volume-val">100%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NHÓM 5: THÔNG TIN HỆ THỐNG -->
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <span class="settings-icon">📊</span>
+                            <div>
+                                <h3>Thông tin hệ thống</h3>
+                                <p class="settings-desc">Trạng thái phần cứng, phần mềm và dung lượng lưu trữ.</p>
+                            </div>
+                        </div>
+                        <div class="settings-card-body">
+                            <div class="sysinfo-grid">
+                                <div class="sysinfo-item"><span class="sysinfo-label">FFmpeg</span><span id="sysFFmpeg" class="sysinfo-value">---</span></div>
+                                <div class="sysinfo-item"><span class="sysinfo-label">GPU (CUDA)</span><span id="sysGPU" class="sysinfo-value">---</span></div>
+                                <div class="sysinfo-item"><span class="sysinfo-label">Whisper Device</span><span id="sysWhisperDev" class="sysinfo-value">---</span></div>
+                                <div class="sysinfo-item"><span class="sysinfo-label">Whisper Compute</span><span id="sysWhisperComp" class="sysinfo-value">---</span></div>
+                                <div class="sysinfo-item"><span class="sysinfo-label">📥 Downloads</span><span id="sysDlSize" class="sysinfo-value">---</span></div>
+                                <div class="sysinfo-item"><span class="sysinfo-label">📤 Outputs</span><span id="sysOutSize" class="sysinfo-value">---</span></div>
+                                <div class="sysinfo-item"><span class="sysinfo-label">🗑️ Temp</span><span id="sysTmpSize" class="sysinfo-value">---</span></div>
+                                <div class="sysinfo-item"><span class="sysinfo-label">Phiên bản</span><span id="sysVersion" class="sysinfo-value">---</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NHÓM 6: DỌN DẸP DỮ LIỆU -->
+                    <div class="settings-card settings-card-danger">
+                        <div class="settings-card-header">
+                            <span class="settings-icon">🧹</span>
+                            <div>
+                                <h3>Dọn dẹp dữ liệu</h3>
+                                <p class="settings-desc">Xóa file tạm, lịch sử hoặc video đã tải để giải phóng ổ cứng.</p>
+                            </div>
+                        </div>
+                        <div class="settings-card-body">
+                            <div class="cleanup-actions">
+                                <button class="btn-cleanup" onclick="doCleanup('temp')">🗑️ Xóa thư mục tạm (Temp)</button>
+                                <button class="btn-cleanup btn-cleanup-warn" onclick="doCleanup('history')">📋 Xóa toàn bộ lịch sử</button>
+                                <button class="btn-cleanup btn-cleanup-danger" onclick="doCleanup('downloads')">💣 Xóa tất cả video đã tải</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NÚT LƯU -->
+                    <div class="settings-save-bar">
+                        <button id="btnSaveSettings" class="btn-generate-main" style="max-width: 400px;">
+                            <span class="btn-icon">💾</span>
+                            <span class="btn-text">Lưu cài đặt</span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+        </main>
+    </div>
+    <script src="/static/script.js?v=4.8"></script>
+</body>
+
+</html>

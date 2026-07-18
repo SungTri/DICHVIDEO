@@ -1,0 +1,6 @@
+//Tóm tắt cách khởi động nếu bạn tự làm sau này:
+//Mở Terminal trong thư mục d:\LINH TINH\DICHVIDEO
+//Chạy:
+//powershell
+.\venv\Scripts\python.exe app.py
+//Mở trình duyệt → http://localhost:8000
