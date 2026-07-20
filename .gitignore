@@ -38,3 +38,8 @@ logs/
 .vscode/
 *.swp
 *.swo
+
+# Data and Settings
+settings.json
+history.json
+folders.json
