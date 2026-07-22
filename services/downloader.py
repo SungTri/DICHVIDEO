@@ -122,6 +122,14 @@ class VideoDownloader:
 
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            raise RuntimeError(f"Lỗi tách audio: {result.stderr}")
+            if "does not contain any stream" in result.stderr:
+                # Video không có kênh âm thanh, tạo 1 giây âm thanh im lặng để Whisper không bị lỗi
+                cmd_silent = [
+                    FFMPEG_PATH, '-f', 'lavfi', '-i', 'anullsrc=r=16000:cl=mono',
+                    '-t', '1', '-acodec', 'pcm_s16le', '-y', output_path
+                ]
+                subprocess.run(cmd_silent, capture_output=True)
+            else:
+                raise RuntimeError(f"Lỗi tách audio: {result.stderr}")
 
         return output_path
