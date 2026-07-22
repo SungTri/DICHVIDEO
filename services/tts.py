@@ -172,7 +172,7 @@ class TTSService:
         async def process_segment(i, seg):
             nonlocal completed_count
             text = seg.get('text', '').strip()
-            if not text:
+            if not text or voice == "none":
                 completed_count += 1
                 if progress_callback:
                     await progress_callback(completed_count / total * 100)

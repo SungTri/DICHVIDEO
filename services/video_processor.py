@@ -420,7 +420,7 @@ class VideoProcessor:
                 f"{v_in}subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout];"
                 f"[2:a]volume={orig_vol}[orig];"
                 f"[1:a]volume={dub_vol}[dub];"
-                f"[orig][dub]amix=inputs=2:duration=first:dropout_transition=3:normalize=0[aout]"
+                f"[orig][dub]amix=inputs=2:duration=first:dropout_transition=3[aout]"
             )
             inputs = ['-i', video_path, '-i', dubbed_audio_path, '-i', no_vocals_path]
         else:
@@ -430,7 +430,7 @@ class VideoProcessor:
                 f"{v_in}subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout];"
                 f"[0:a]volume={orig_vol}[orig];"
                 f"[1:a]volume={dub_vol}[dub];"
-                f"[orig][dub]amix=inputs=2:duration=first:dropout_transition=3:normalize=0[aout]"
+                f"[orig][dub]amix=inputs=2:duration=first:dropout_transition=3[aout]"
             )
             inputs = ['-i', video_path, '-i', dubbed_audio_path]
 
