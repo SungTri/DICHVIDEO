@@ -248,7 +248,7 @@ class VideoProcessor:
         return output_path
 
     def export_final(self, video_path: str, srt_path: str,
-                     dubbed_audio_path: str, output_path: str,
+                     dubbed_audio_path: str | None, output_path: str,
                      sub_color: str = "white", sub_size: int = 22,
                      sub_bg: str = "outline", sub_position: str = "bottom",
                      sub_font: str = "Arial",
