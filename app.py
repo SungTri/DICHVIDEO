@@ -421,10 +421,14 @@ async def process_pipeline_finish(job_id: str, segments: list, voice: str, sub_s
             await update_step(job_id, 3, "processing", progress,
                             f"Đang tạo lồng tiếng {int(progress)}%")
 
-        dubbed_audio_path = await tts_service.generate_dubbed_audio(
-            segments, tts_output_dir, video_duration,
-            voice=voice, progress_callback=tts_callback
-        )
+        if voice == "none":
+            dubbed_audio_path = None
+            original_vol_val = 1.0
+        else:
+            dubbed_audio_path = await tts_service.generate_dubbed_audio(
+                segments, tts_output_dir, video_duration,
+                voice=voice, progress_callback=tts_callback
+            )
 
         await update_step(job_id, 3, "completed", 100, "Đã tạo lồng tiếng xong!")
 

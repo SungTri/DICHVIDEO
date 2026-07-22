@@ -414,25 +414,41 @@ class VideoProcessor:
             v_in = "[vpre]"
 
         if no_vocals_path:
-            # Nhạc nền gốc tách bằng Demucs ở input 2
-            filter_complex = (
-                f"{blur_filter}"
-                f"{v_in}subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout];"
-                f"[2:a]volume={orig_vol}[orig];"
-                f"[1:a]volume={dub_vol}[dub];"
-                f"[orig][dub]amix=inputs=2:duration=first:dropout_transition=3[aout]"
-            )
-            inputs = ['-i', video_path, '-i', dubbed_audio_path, '-i', no_vocals_path]
+            # Nhạc nền gốc tách bằng Demucs ở input 2 (nếu có dubbed_audio_path thì input 1 là dubbed)
+            if dubbed_audio_path:
+                filter_complex = (
+                    f"{blur_filter}"
+                    f"{v_in}subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout];"
+                    f"[2:a]volume={orig_vol}[orig];"
+                    f"[1:a]volume={dub_vol}[dub];"
+                    f"[orig][dub]amix=inputs=2:duration=first:dropout_transition=3[aout]"
+                )
+                inputs = ['-i', video_path, '-i', dubbed_audio_path, '-i', no_vocals_path]
+            else:
+                filter_complex = (
+                    f"{blur_filter}"
+                    f"{v_in}subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout];"
+                    f"[1:a]volume={orig_vol}[aout]"
+                )
+                inputs = ['-i', video_path, '-i', no_vocals_path]
         else:
             # Nhạc nền gốc của video ở input 0
-            filter_complex = (
-                f"{blur_filter}"
-                f"{v_in}subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout];"
-                f"[0:a]volume={orig_vol}[orig];"
-                f"[1:a]volume={dub_vol}[dub];"
-                f"[orig][dub]amix=inputs=2:duration=first:dropout_transition=3[aout]"
-            )
-            inputs = ['-i', video_path, '-i', dubbed_audio_path]
+            if dubbed_audio_path:
+                filter_complex = (
+                    f"{blur_filter}"
+                    f"{v_in}subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout];"
+                    f"[0:a]volume={orig_vol}[orig];"
+                    f"[1:a]volume={dub_vol}[dub];"
+                    f"[orig][dub]amix=inputs=2:duration=first:dropout_transition=3[aout]"
+                )
+                inputs = ['-i', video_path, '-i', dubbed_audio_path]
+            else:
+                filter_complex = (
+                    f"{blur_filter}"
+                    f"{v_in}subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout];"
+                    f"[0:a]volume={orig_vol}[aout]"
+                )
+                inputs = ['-i', video_path]
 
         # Kiểm tra bộ giải mã phần cứng tốt nhất
         encoder = self.get_best_video_encoder()
@@ -495,19 +511,33 @@ class VideoProcessor:
             try:
                 shutil.copy2(srt_path, temp_srt) # copy lại srt do đã bị xóa
                 filter_complex_fallback = f"[0:v]subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout]"
-                cmd_fallback = [
-                    FFMPEG_PATH,
-                    '-i', video_path,
-                    '-i', dubbed_audio_path,
-                    '-filter_complex', filter_complex_fallback,
-                    '-map', '[vout]',
-                    '-map', '1:a',
-                    '-c:v', 'libx264',
-                    '-preset', 'ultrafast',
-                    '-c:a', 'aac',
-                    '-y', '-loglevel', 'warning',
-                    output_path
-                ]
+                if dubbed_audio_path:
+                    cmd_fallback = [
+                        FFMPEG_PATH,
+                        '-i', video_path,
+                        '-i', dubbed_audio_path,
+                        '-filter_complex', filter_complex_fallback,
+                        '-map', '[vout]',
+                        '-map', '1:a',
+                        '-c:v', 'libx264',
+                        '-preset', 'ultrafast',
+                        '-c:a', 'aac',
+                        '-y', '-loglevel', 'warning',
+                        output_path
+                    ]
+                else:
+                    cmd_fallback = [
+                        FFMPEG_PATH,
+                        '-i', video_path,
+                        '-filter_complex', filter_complex_fallback,
+                        '-map', '[vout]',
+                        '-map', '0:a',
+                        '-c:v', 'libx264',
+                        '-preset', 'ultrafast',
+                        '-c:a', 'aac',
+                        '-y', '-loglevel', 'warning',
+                        output_path
+                    ]
                 result_fallback = subprocess.run(cmd_fallback, capture_output=True, text=True)
                 if os.path.exists(temp_srt):
                     os.remove(temp_srt)
