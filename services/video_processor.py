@@ -408,7 +408,9 @@ class VideoProcessor:
                 last_v_out = "[0:v]"
                 for i, bar in enumerate(active_bars):
                     y_pct = float(bar.get("y_percent", 85))
+                    x_pct = float(bar.get("x_percent", 0))
                     h_pct = float(bar.get("h_percent", 15))
+                    w_pct = float(bar.get("w_percent", 100))
                     intensity = int(bar.get("intensity", 15))
                     
                     v_base = f"[vbase{i}]"
@@ -418,8 +420,8 @@ class VideoProcessor:
                     
                     blur_filter += (
                         f"{last_v_out}split{v_base}{v_orig};"
-                        f"{v_orig}crop=iw:ih*{h_pct/100}:0:ih*{y_pct/100},boxblur={intensity}:1{v_blurred};"
-                        f"{v_base}{v_blurred}overlay=0:ih*{y_pct/100}{v_out};"
+                        f"{v_orig}crop=iw*{w_pct/100}:ih*{h_pct/100}:iw*{x_pct/100}:ih*{y_pct/100},boxblur={intensity}:1{v_blurred};"
+                        f"{v_base}{v_blurred}overlay=W*{x_pct/100}:H*{y_pct/100}{v_out};"
                     )
                     last_v_out = v_out
                 v_in = last_v_out

@@ -2918,17 +2918,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="stylist-group">
                         <div class="label-with-value">
-                            <label>VỊ TRÍ (Y)</label>
-                            <span id="blurBarYVal_${index}">${bar.y_percent}%</span>
+                            <label>VỊ TRÍ DỌC (Y)</label>
+                            <span id="blurBarYVal_${index}">${bar.y_percent !== undefined ? bar.y_percent : 85}%</span>
                         </div>
-                        <input type="range" class="custom-slider blur-bar-y-slider" data-index="${index}" min="0" max="100" step="1" value="${bar.y_percent}">
+                        <input type="range" class="custom-slider blur-bar-y-slider" data-index="${index}" min="0" max="100" step="1" value="${bar.y_percent !== undefined ? bar.y_percent : 85}">
+                    </div>
+                    <div class="stylist-group" style="margin-top: 10px;">
+                        <div class="label-with-value">
+                            <label>VỊ TRÍ NGANG (X)</label>
+                            <span id="blurBarXVal_${index}">${bar.x_percent !== undefined ? bar.x_percent : 0}%</span>
+                        </div>
+                        <input type="range" class="custom-slider blur-bar-x-slider" data-index="${index}" min="0" max="100" step="1" value="${bar.x_percent !== undefined ? bar.x_percent : 0}">
                     </div>
                     <div class="stylist-group" style="margin-top: 10px;">
                         <div class="label-with-value">
                             <label>CHIỀU CAO</label>
-                            <span id="blurBarHVal_${index}">${bar.h_percent}%</span>
+                            <span id="blurBarHVal_${index}">${bar.h_percent !== undefined ? bar.h_percent : 15}%</span>
                         </div>
-                        <input type="range" class="custom-slider blur-bar-h-slider" data-index="${index}" min="5" max="50" step="1" value="${bar.h_percent}">
+                        <input type="range" class="custom-slider blur-bar-h-slider" data-index="${index}" min="5" max="100" step="1" value="${bar.h_percent !== undefined ? bar.h_percent : 15}">
+                    </div>
+                    <div class="stylist-group" style="margin-top: 10px;">
+                        <div class="label-with-value">
+                            <label>CHIỀU RỘNG</label>
+                            <span id="blurBarWVal_${index}">${bar.w_percent !== undefined ? bar.w_percent : 100}%</span>
+                        </div>
+                        <input type="range" class="custom-slider blur-bar-w-slider" data-index="${index}" min="5" max="100" step="1" value="${bar.w_percent !== undefined ? bar.w_percent : 100}">
                     </div>
                     <div class="stylist-group" style="margin-top: 10px;">
                         <div class="label-with-value">
@@ -2969,11 +2983,31 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
+        document.querySelectorAll('.blur-bar-x-slider').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const index = parseInt(e.target.getAttribute('data-index'));
+                window.blurBars[index].x_percent = parseFloat(e.target.value);
+                const valEl = document.getElementById(`blurBarXVal_${index}`);
+                if (valEl) valEl.textContent = e.target.value + '%';
+                updateBlurBarDisplay();
+            });
+        });
+
         document.querySelectorAll('.blur-bar-h-slider').forEach(slider => {
             slider.addEventListener('input', (e) => {
                 const index = parseInt(e.target.getAttribute('data-index'));
                 window.blurBars[index].h_percent = parseFloat(e.target.value);
                 const valEl = document.getElementById(`blurBarHVal_${index}`);
+                if (valEl) valEl.textContent = e.target.value + '%';
+                updateBlurBarDisplay();
+            });
+        });
+
+        document.querySelectorAll('.blur-bar-w-slider').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const index = parseInt(e.target.getAttribute('data-index'));
+                window.blurBars[index].w_percent = parseFloat(e.target.value);
+                const valEl = document.getElementById(`blurBarWVal_${index}`);
                 if (valEl) valEl.textContent = e.target.value + '%';
                 updateBlurBarDisplay();
             });
@@ -3003,8 +3037,15 @@ document.addEventListener('DOMContentLoaded', () => {
             overlay.className = 'blur-bar-overlay-dynamic';
             overlay.setAttribute('data-index', index);
             
-            const topPx = area.y + (bar.y_percent / 100) * area.h;
-            const heightPx = (bar.h_percent / 100) * area.h;
+            const yPct = bar.y_percent !== undefined ? bar.y_percent : 85;
+            const xPct = bar.x_percent !== undefined ? bar.x_percent : 0;
+            const hPct = bar.h_percent !== undefined ? bar.h_percent : 15;
+            const wPct = bar.w_percent !== undefined ? bar.w_percent : 100;
+            
+            const topPx = area.y + (yPct / 100) * area.h;
+            const leftPx = area.x + (xPct / 100) * area.w;
+            const heightPx = (hPct / 100) * area.h;
+            const widthPx = (wPct / 100) * area.w;
             const blurPx = Math.max(2, bar.intensity / 2);
 
             overlay.style.position = 'absolute';
@@ -3012,14 +3053,13 @@ document.addEventListener('DOMContentLoaded', () => {
             overlay.style.background = 'rgba(0,0,0,0.5)';
             overlay.style.backdropFilter = `blur(${blurPx}px)`;
             overlay.style.boxSizing = 'border-box';
-            overlay.style.borderTop = '1px dashed #ef4444';
-            overlay.style.borderBottom = '1px dashed #ef4444';
-            overlay.style.cursor = 'ns-resize';
+            overlay.style.border = '1px dashed #ef4444';
+            overlay.style.cursor = 'move';
             
             overlay.style.top = topPx + 'px';
+            overlay.style.left = leftPx + 'px';
             overlay.style.height = heightPx + 'px';
-            overlay.style.left = area.x + 'px';
-            overlay.style.width = area.w + 'px';
+            overlay.style.width = widthPx + 'px';
 
             if (previewContainer) {
                 previewContainer.appendChild(overlay);
@@ -3031,7 +3071,9 @@ document.addEventListener('DOMContentLoaded', () => {
         addBlurBarBtn.addEventListener('click', () => {
             window.blurBars.push({
                 enabled: true,
+                x_percent: 0,
                 y_percent: 85,
+                w_percent: 100,
                 h_percent: 15,
                 intensity: 15
             });
@@ -3046,7 +3088,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let isDraggingBlurBar = false;
     let draggingBlurBarIndex = -1;
     let blurBarStartY = 0;
+    let blurBarStartX = 0;
     let blurBarStartYPercent = 0;
+    let blurBarStartXPercent = 0;
 
     if (previewContainer) {
         previewContainer.addEventListener('mousedown', (e) => {
@@ -3054,8 +3098,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 isDraggingBlurBar = true;
                 draggingBlurBarIndex = parseInt(e.target.getAttribute('data-index'));
                 blurBarStartY = e.clientY;
-                blurBarStartYPercent = window.blurBars[draggingBlurBarIndex].y_percent;
-                document.body.style.cursor = 'ns-resize';
+                blurBarStartX = e.clientX;
+                blurBarStartYPercent = window.blurBars[draggingBlurBarIndex].y_percent !== undefined ? window.blurBars[draggingBlurBarIndex].y_percent : 85;
+                blurBarStartXPercent = window.blurBars[draggingBlurBarIndex].x_percent !== undefined ? window.blurBars[draggingBlurBarIndex].x_percent : 0;
+                document.body.style.cursor = 'move';
                 e.preventDefault();
             }
         });
@@ -3064,24 +3110,39 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('mousemove', (e) => {
         if (!isDraggingBlurBar || draggingBlurBarIndex < 0) return;
         const area = getVideoActiveArea();
-        if (!area) return;
+        if (!area || area.w === 0 || area.h === 0) return;
 
         const deltaY = e.clientY - blurBarStartY;
-        const deltaPercent = (deltaY / area.h) * 100;
-        let newPercent = blurBarStartYPercent + deltaPercent;
+        const deltaX = e.clientX - blurBarStartX;
+        
+        const deltaYPercent = (deltaY / area.h) * 100;
+        const deltaXPercent = (deltaX / area.w) * 100;
+        
+        let newYPercent = blurBarStartYPercent + deltaYPercent;
+        let newXPercent = blurBarStartXPercent + deltaXPercent;
+        
         const bar = window.blurBars[draggingBlurBarIndex];
+        const hPct = bar.h_percent !== undefined ? bar.h_percent : 15;
+        const wPct = bar.w_percent !== undefined ? bar.w_percent : 100;
 
-        if (newPercent < 0) newPercent = 0;
-        if (newPercent + bar.h_percent > 100) {
-            newPercent = 100 - bar.h_percent;
-        }
+        if (newYPercent < 0) newYPercent = 0;
+        if (newYPercent + hPct > 100) newYPercent = 100 - hPct;
+        
+        if (newXPercent < 0) newXPercent = 0;
+        if (newXPercent + wPct > 100) newXPercent = 100 - wPct;
 
-        bar.y_percent = newPercent;
+        bar.y_percent = newYPercent;
+        bar.x_percent = newXPercent;
         
         const ySlider = document.querySelector(`.blur-bar-y-slider[data-index="${draggingBlurBarIndex}"]`);
         const yVal = document.getElementById(`blurBarYVal_${draggingBlurBarIndex}`);
-        if (ySlider) ySlider.value = newPercent;
-        if (yVal) yVal.textContent = Math.round(newPercent) + '%';
+        if (ySlider) ySlider.value = newYPercent;
+        if (yVal) yVal.textContent = Math.round(newYPercent) + '%';
+        
+        const xSlider = document.querySelector(`.blur-bar-x-slider[data-index="${draggingBlurBarIndex}"]`);
+        const xVal = document.getElementById(`blurBarXVal_${draggingBlurBarIndex}`);
+        if (xSlider) xSlider.value = newXPercent;
+        if (xVal) xVal.textContent = Math.round(newXPercent) + '%';
         
         updateBlurBarDisplay();
     });
