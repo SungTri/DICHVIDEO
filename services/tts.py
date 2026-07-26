@@ -158,6 +158,7 @@ class TTSService:
     async def generate_dubbed_audio(self, segments: list, output_dir: str,
                                      total_duration: float,
                                      voice: str | None = None,
+                                     voice_speed: float = 1.0,
                                      progress_callback=None) -> str:
         """
         Tạo audio lồng tiếng hoàn chỉnh từ danh sách segments đã dịch (Tối ưu hóa chạy song song).
@@ -193,12 +194,15 @@ class TTSService:
                 tts_duration = await asyncio.to_thread(self._get_audio_duration, tts_file)
                 seg_duration = seg['end'] - seg['start']
 
-                speed_factor = 1.0
-                if tts_duration > seg_duration > 0.5:
-                    speed_factor = tts_duration / seg_duration
+                speed_factor = voice_speed
+                adjusted_duration = tts_duration / speed_factor
+                
+                if adjusted_duration > seg_duration > 0.5:
+                    additional_speed = adjusted_duration / seg_duration
+                    speed_factor = speed_factor * additional_speed
                     speed_factor = min(speed_factor, 2.5)
-                    if speed_factor <= 1.05:
-                        speed_factor = 1.0
+                    if abs(speed_factor - voice_speed) <= 0.05:
+                        speed_factor = voice_speed
 
                 completed_count += 1
                 if progress_callback:
@@ -293,15 +297,18 @@ class TTSService:
             inputs.extend(['-i', tf['file']])
             delay_ms = int(tf['start'] * 1000)
             
-            # Tạo bộ lọc atempo nếu có yêu cầu tăng tốc
+            # Tạo bộ lọc atempo nếu tốc độ khác 1.0
             speed = tf.get('speed', 1.0)
             audio_filter = ""
-            if speed > 1.0:
+            if abs(speed - 1.0) > 0.01:
                 atempo_filters = []
                 remaining = speed
                 while remaining > 2.0:
                     atempo_filters.append("atempo=2.0")
                     remaining /= 2.0
+                while remaining < 0.5:
+                    atempo_filters.append("atempo=0.5")
+                    remaining /= 0.5
                 atempo_filters.append(f"atempo={remaining:.4f}")
                 audio_filter = ','.join(atempo_filters) + ","
 

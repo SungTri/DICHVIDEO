@@ -66,6 +66,7 @@ const elements = {
     subBg: document.getElementById('subBg'),
     subPosition: document.getElementById('subPosition'),
     workspaceVoiceSelect: document.getElementById('workspaceVoiceSelect'),
+    workspaceVoiceSpeedSelect: document.getElementById('workspaceVoiceSpeedSelect'),
     subtitleList: document.getElementById('subtitleList'),
     exportBtn: document.getElementById('exportBtn'),
     workspacePreviewBtn: document.getElementById('workspacePreviewBtn'),
@@ -133,6 +134,7 @@ const configs = {
     model_size: 'base',
     source_lang: 'en',
     voice: 'vi-VN-HoaiMyNeural',
+    voice_speed: 1.0,
     original_volume: 0.15,
     video_quality: 'best',
     separate_vocals: false
@@ -356,6 +358,11 @@ document.querySelectorAll('.config-options').forEach(group => {
 if (elements.workspaceVoiceSelect) {
     elements.workspaceVoiceSelect.addEventListener('change', (e) => {
         configs.voice = e.target.value;
+    });
+}
+if (elements.workspaceVoiceSpeedSelect) {
+    elements.workspaceVoiceSpeedSelect.addEventListener('change', (e) => {
+        configs.voice_speed = parseFloat(e.target.value);
     });
 }
 
@@ -1931,6 +1938,7 @@ if (elements.exportBtn) {
                     job_id: currentJobId,
                     segments: currentSegments,
                     voice: elements.workspaceVoiceSelect ? elements.workspaceVoiceSelect.value : configs.voice,
+                    voice_speed: elements.workspaceVoiceSpeedSelect ? parseFloat(elements.workspaceVoiceSpeedSelect.value) : configs.voice_speed,
                     sub_style: subStyle,
                     original_volume: elements.wsOriginalVolume ? parseFloat(elements.wsOriginalVolume.value) : 0.15,
                     dubbed_volume: elements.wsDubbedVolume ? parseFloat(elements.wsDubbedVolume.value) : 1.0,
@@ -1988,6 +1996,7 @@ if (elements.workspacePreviewBtn) {
                     job_id: currentJobId,
                     segments: currentSegments,
                     voice: elements.workspaceVoiceSelect ? elements.workspaceVoiceSelect.value : configs.voice,
+                    voice_speed: elements.workspaceVoiceSpeedSelect ? parseFloat(elements.workspaceVoiceSpeedSelect.value) : configs.voice_speed,
                     original_volume: elements.wsOriginalVolume ? parseFloat(elements.wsOriginalVolume.value) : 0.15,
                     dubbed_volume: elements.wsDubbedVolume ? parseFloat(elements.wsDubbedVolume.value) : 1.0
                 })
@@ -2215,7 +2224,8 @@ if (elements.srtGenerateBtn) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     srt_content: srtContent,
-                    voice: elements.srtVoiceSelect ? elements.srtVoiceSelect.value : 'vi-VN-NamMinhNeural'
+                    voice: elements.srtVoiceSelect ? elements.srtVoiceSelect.value : 'vi-VN-NamMinhNeural',
+                    voice_speed: 1.0
                 })
             });
 

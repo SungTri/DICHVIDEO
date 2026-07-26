@@ -386,7 +386,8 @@ async def process_pipeline_start(job_id: str, url: str | None = None,
 async def process_pipeline_finish(job_id: str, segments: list, voice: str, sub_style: dict,
                                  original_volume: float | None = None, dubbed_volume: float | None = None,
                                  separate_vocals: bool = False, output_folder: str | None = None,
-                                 custom_output_dir: str | None = None, blur_bars: list[dict] | None = None):
+                                 custom_output_dir: str | None = None, blur_bars: list[dict] | None = None,
+                                 voice_speed: float = 1.0):
     """Giai đoạn 2: Tạo lồng tiếng từ bản dịch đã sửa, xuất video theo style cấu hình."""
     loop = asyncio.get_event_loop()
     job = jobs[job_id]
@@ -427,7 +428,7 @@ async def process_pipeline_finish(job_id: str, segments: list, voice: str, sub_s
         else:
             dubbed_audio_path = await tts_service.generate_dubbed_audio(
                 segments, tts_output_dir, video_duration,
-                voice=voice, progress_callback=tts_callback
+                voice=voice, voice_speed=voice_speed, progress_callback=tts_callback
             )
 
         await update_step(job_id, 3, "completed", 100, "Đã tạo lồng tiếng xong!")
@@ -517,6 +518,7 @@ class FinishRequest(BaseModel):
     job_id: str
     segments: List[dict]
     voice: str = DEFAULT_VOICE
+    voice_speed: float = 1.0
     sub_style: dict = {"color": "white", "size": 22, "bg": "outline"}
     original_volume: float = 0.15
     dubbed_volume: float = 1.0
@@ -529,12 +531,14 @@ class FinishRequest(BaseModel):
 class SrtToAudioRequest(BaseModel):
     srt_content: str
     voice: str = DEFAULT_VOICE
+    voice_speed: float = 1.0
 
 
 class PreviewRequest(BaseModel):
     job_id: str
     segments: List[dict]
     voice: str = DEFAULT_VOICE
+    voice_speed: float = 1.0
     original_volume: float = 0.15
     dubbed_volume: float = 1.0
 
@@ -599,7 +603,8 @@ async def finish_processing(request: FinishRequest):
             separate_vocals=request.separate_vocals,
             output_folder=request.output_folder,
             custom_output_dir=request.custom_output_dir,
-            blur_bars=request.blur_bars
+            blur_bars=request.blur_bars,
+            voice_speed=request.voice_speed
         )
     )
 
@@ -682,7 +687,7 @@ async def srt_to_audio(request: SrtToAudioRequest):
         # Gọi tts_service để tổng hợp lồng tiếng và tự động khớp thời lượng
         dubbed_audio_path = await tts_service.generate_dubbed_audio(
             sorted_segments, job_temp_dir, total_duration,
-            voice=request.voice
+            voice=request.voice, voice_speed=request.voice_speed
         )
         
         # Sao chép kết quả cuối cùng sang outputs
