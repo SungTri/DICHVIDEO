@@ -2990,7 +2990,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('mousemove', (e) => {
         if (!isDraggingBlurBar) return;
-        const area = getVideoRect(workspaceVideo);
+        const area = getVideoActiveArea();
         if (!area) return;
 
         const deltaY = e.clientY - blurBarStartY;
