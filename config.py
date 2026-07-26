@@ -90,13 +90,9 @@ GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 # Lấy key miễn phí tại: https://cloud.sambanova.ai/
 SAMBANOVA_API_KEY = os.environ.get("SAMBANOVA_API_KEY", "")
 
-# --- ElevenLabs API Key (Không bắt buộc - Cho phép dùng giọng đọc cao cấp Adam, Bella) ---
+# --- ElevenLabs API Key (Không bắt buộc - Cho phép dùng giọng đọc cao cấp) ---
 # Đăng ký tại: https://elevenlabs.io/
 ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
-
-# --- ElevenLabs Voice IDs (Nếu là tài khoản mới, hãy copy ID từ ElevenLabs dashboard dán vào đây) ---
-ELEVENLABS_VOICE_ADAM = os.environ.get("ELEVENLABS_VOICE_ADAM", "pNInz6obpgqTkFyR25v3")
-ELEVENLABS_VOICE_BELLA = os.environ.get("ELEVENLABS_VOICE_BELLA", "EXAVITQu4vr4xnSDxMaL")
 
 # --- Audio Separation (Lọc giọng gốc bằng AI Demucs) ---
 ENABLE_DEMUCS = True  # Kích hoạt tính năng này trong hệ thống
@@ -140,7 +136,6 @@ STEP_WEIGHTS = {
 def load_persistent_settings():
     global DOWNLOADS_DIR, OUTPUTS_DIR, TEMP_DIR
     global GEMINI_API_KEY, GROQ_API_KEY, GITHUB_TOKEN, SAMBANOVA_API_KEY, ELEVENLABS_API_KEY
-    global ELEVENLABS_VOICE_ADAM, ELEVENLABS_VOICE_BELLA
     global TTS_VOICE_FEMALE, TTS_VOICE_MALE, DEFAULT_VOICE
     global ORIGINAL_AUDIO_VOLUME, DUBBED_AUDIO_VOLUME
     
@@ -183,10 +178,7 @@ def load_persistent_settings():
             DEFAULT_VOICE = TTS_VOICE_FEMALE
         if voices.get("default_male"):
             TTS_VOICE_MALE = voices["default_male"]
-        if voices.get("elevenlabs_adam_id"):
-            ELEVENLABS_VOICE_ADAM = voices["elevenlabs_adam_id"]
-        if voices.get("elevenlabs_bella_id"):
-            ELEVENLABS_VOICE_BELLA = voices["elevenlabs_bella_id"]
+        pass
             
         # Audio volumes
         audio = data.get("audio", {})

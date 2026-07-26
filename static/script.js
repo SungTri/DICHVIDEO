@@ -2184,7 +2184,6 @@ if (elements.srtGenderMaleBtn && elements.srtGenderFemaleBtn && elements.srtVoic
         
         elements.srtVoiceSelect.innerHTML = `
             <option value="vi-VN-NamMinhNeural" selected>👨 Giọng nam (Nam Minh)</option>
-            <option value="eleven_adam">🗣️ ElevenLabs (Adam)</option>
         `;
     });
 
@@ -2194,7 +2193,6 @@ if (elements.srtGenderMaleBtn && elements.srtGenderFemaleBtn && elements.srtVoic
         
         elements.srtVoiceSelect.innerHTML = `
             <option value="vi-VN-HoaiMyNeural" selected>👩 Giọng nữ (Hoài My)</option>
-            <option value="eleven_bella">🗣️ ElevenLabs (Bella)</option>
         `;
     });
 }
@@ -2517,12 +2515,8 @@ async function loadSettingsData() {
         // Voices
         const vf = document.getElementById('voiceFemale');
         const vm = document.getElementById('voiceMale');
-        const vaId = document.getElementById('voiceAdamId');
-        const vbId = document.getElementById('voiceBellaId');
         if (vf) vf.value = data.voices.default_female || 'vi-VN-HoaiMyNeural';
         if (vm) vm.value = data.voices.default_male || 'vi-VN-NamMinhNeural';
-        if (vaId) vaId.value = data.voices.elevenlabs_adam_id || '';
-        if (vbId) vbId.value = data.voices.elevenlabs_bella_id || '';
 
         // Audio volumes
         const volOrig = document.getElementById('volOriginal');
@@ -2613,8 +2607,6 @@ async function saveSettingsData() {
             voices: {
                 default_female: document.getElementById('voiceFemale')?.value || '',
                 default_male: document.getElementById('voiceMale')?.value || '',
-                elevenlabs_adam_id: document.getElementById('voiceAdamId')?.value || '',
-                elevenlabs_bella_id: document.getElementById('voiceBellaId')?.value || '',
             },
             audio: {
                 original_volume: (parseInt(document.getElementById('volOriginal')?.value || '15')) / 100,

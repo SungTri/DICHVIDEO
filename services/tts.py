@@ -40,12 +40,10 @@ class TTSService:
             
             # Map sang ElevenLabs Voice ID
             voice_mapping = {
-                "eleven_adam": ELEVENLABS_VOICE_ADAM,
-                "eleven_bella": ELEVENLABS_VOICE_BELLA,
                 "eleven_antonio": "ErXwobaYiN019PkySvjV",
                 "eleven_rachel": "21m00Tcm4TlvDq8ikWAM"
             }
-            voice_id = voice_mapping.get(voice, ELEVENLABS_VOICE_ADAM)
+            voice_id = voice_mapping.get(voice, "ErXwobaYiN019PkySvjV")
             
             url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
             headers = {
@@ -73,8 +71,8 @@ class TTSService:
                     return output_path
             except Exception as e:
                 print(f"[TTS] Lỗi ElevenLabs: {e}. Tự động fallback về giọng Edge TTS...")
-                # Fallback: Nam (NamMinh) cho adam/antonio, Nữ (HoaiMy) cho bella/rachel
-                voice = "vi-VN-NamMinhNeural" if "adam" in voice or "antonio" in voice else "vi-VN-HoaiMyNeural"
+                # Fallback: Nam cho antonio, Nữ cho rachel
+                voice = "vi-VN-NamMinhNeural" if "antonio" in voice else "vi-VN-HoaiMyNeural"
 
         max_retries = 3
         
