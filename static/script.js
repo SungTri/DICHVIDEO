@@ -2973,6 +2973,51 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Thêm logic kéo thả (drag) cho thanh làm mờ
+    let isDraggingBlurBar = false;
+    let blurBarStartY = 0;
+    let blurBarStartYPercent = 0;
+
+    if (videoBlurOverlay) {
+        videoBlurOverlay.addEventListener('mousedown', (e) => {
+            isDraggingBlurBar = true;
+            blurBarStartY = e.clientY;
+            blurBarStartYPercent = window.currentBlurBarSettings.y_percent;
+            document.body.style.cursor = 'ns-resize';
+            e.preventDefault(); // Tránh bôi đen text khi kéo
+        });
+    }
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDraggingBlurBar) return;
+        const area = getVideoRect(workspaceVideo);
+        if (!area) return;
+
+        const deltaY = e.clientY - blurBarStartY;
+        const deltaPercent = (deltaY / area.h) * 100;
+        let newPercent = blurBarStartYPercent + deltaPercent;
+
+        // Giới hạn không cho ra ngoài video
+        if (newPercent < 0) newPercent = 0;
+        if (newPercent + window.currentBlurBarSettings.h_percent > 100) {
+            newPercent = 100 - window.currentBlurBarSettings.h_percent;
+        }
+
+        window.currentBlurBarSettings.y_percent = newPercent;
+        if (blurBarYSlider) {
+            blurBarYSlider.value = newPercent;
+            if (blurBarYVal) blurBarYVal.textContent = Math.round(newPercent) + '%';
+        }
+        updateBlurBarDisplay();
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (isDraggingBlurBar) {
+            isDraggingBlurBar = false;
+            document.body.style.cursor = '';
+        }
+    });
+
     // Lắng nghe resize
     window.addEventListener('resize', updateBlurBarDisplay);
     workspaceVideo.addEventListener('loadedmetadata', updateBlurBarDisplay);
