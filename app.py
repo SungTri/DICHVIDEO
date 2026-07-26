@@ -386,7 +386,7 @@ async def process_pipeline_start(job_id: str, url: str | None = None,
 async def process_pipeline_finish(job_id: str, segments: list, voice: str, sub_style: dict,
                                  original_volume: float | None = None, dubbed_volume: float | None = None,
                                  separate_vocals: bool = False, output_folder: str | None = None,
-                                 custom_output_dir: str | None = None, blur_bar: dict | None = None):
+                                 custom_output_dir: str | None = None, blur_bars: list[dict] | None = None):
     """Giai đoạn 2: Tạo lồng tiếng từ bản dịch đã sửa, xuất video theo style cấu hình."""
     loop = asyncio.get_event_loop()
     job = jobs[job_id]
@@ -471,7 +471,7 @@ async def process_pipeline_finish(job_id: str, segments: list, voice: str, sub_s
             dubbed_volume=dubbed_volume,
             separate_vocals=separate_vocals,
             progress_callback=vp_callback,
-            blur_bar=blur_bar
+            blur_bars=blur_bars
         )
 
         await update_step(job_id, 4, "completed", 100, "Hoàn thành!")
@@ -523,7 +523,7 @@ class FinishRequest(BaseModel):
     separate_vocals: bool = False
     output_folder: str | None = None
     custom_output_dir: str | None = None
-    blur_bar: dict | None = None
+    blur_bars: list[dict] | None = None
 
 
 class SrtToAudioRequest(BaseModel):
@@ -599,7 +599,7 @@ async def finish_processing(request: FinishRequest):
             separate_vocals=request.separate_vocals,
             output_folder=request.output_folder,
             custom_output_dir=request.custom_output_dir,
-            blur_bar=request.blur_bar
+            blur_bars=request.blur_bars
         )
     )
 

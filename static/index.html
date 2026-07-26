@@ -366,7 +366,7 @@
                     <div class="workspace-left">
                         <div class="preview-container">
                             <video id="workspaceVideo" preload="auto"></video>
-                            <div id="videoBlurOverlay" style="display: none; position: absolute; left: 0; right: 0; z-index: 5; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); box-sizing: border-box; border-top: 1px dashed #ef4444; border-bottom: 1px dashed #ef4444; cursor: ns-resize;"></div>
+                            <!-- Blur overlays will be dynamically injected here -->
                             <div id="videoSubTitleOverlay" class="video-subtitle-overlay"></div>
                             <img id="videoLogoOverlay" style="display: none; position: absolute; z-index: 100; cursor: move; border: 2px dashed transparent; box-sizing: border-box; user-select: none; max-width: 100%; left: 0px; top: 0px;">
 
@@ -604,34 +604,9 @@
                                     <div class="toggle-title-main">Thanh Làm Mờ (Blur Bar)</div>
                                     <div class="toggle-desc-sub">Che đi phụ đề hoặc logo gốc.</div>
                                 </div>
-                                <label class="ui-switch">
-                                    <input type="checkbox" id="blurBarToggle">
-                                    <span class="slider-round"></span>
-                                </label>
+                                <button id="addBlurBarBtn" style="background: rgba(255,255,255,0.1); border: 1px solid var(--border); border-radius: var(--radius-sm); color: #fff; padding: 4px 12px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: all 0.2s;">+ Thêm</button>
                             </div>
-                            <div id="blurBarSettingsGroup" class="hidden">
-                                <div class="stylist-group" style="margin-top: 10px;">
-                                    <div class="label-with-value">
-                                        <label for="blurBarYSlider">VỊ TRÍ (TỪ TRÊN XUỐNG)</label>
-                                        <span id="blurBarYVal">85%</span>
-                                    </div>
-                                    <input type="range" id="blurBarYSlider" min="0" max="100" step="1" value="85" class="custom-slider">
-                                </div>
-                                <div class="stylist-group" style="margin-top: 10px;">
-                                    <div class="label-with-value">
-                                        <label for="blurBarHSlider">CHIỀU CAO</label>
-                                        <span id="blurBarHVal">15%</span>
-                                    </div>
-                                    <input type="range" id="blurBarHSlider" min="5" max="50" step="1" value="15" class="custom-slider">
-                                </div>
-                                <div class="stylist-group" style="margin-top: 10px;">
-                                    <div class="label-with-value">
-                                        <label for="blurBarIntensitySlider">CƯỜNG ĐỘ MỜ</label>
-                                        <span id="blurBarIntensityVal">15</span>
-                                    </div>
-                                    <input type="range" id="blurBarIntensitySlider" min="1" max="50" step="1" value="15" class="custom-slider">
-                                </div>
-                            </div>
+                            <div id="blurBarsContainer"></div>
                         </div>
 
                         <!-- SECTION 3: LỒNG TIẾNG -->

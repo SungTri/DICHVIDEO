@@ -1937,7 +1937,7 @@ if (elements.exportBtn) {
                     separate_vocals: document.getElementById('wsSeparateVocals') ? document.getElementById('wsSeparateVocals').checked : false,
                     output_folder: document.getElementById('wsOutputFolderSelect') ? document.getElementById('wsOutputFolderSelect').value : null,
                     custom_output_dir: document.getElementById('wsCustomOutputDir') ? document.getElementById('wsCustomOutputDir').value.trim() : null,
-                    blur_bar: window.currentBlurBarSettings || null
+                    blur_bars: window.blurBars || null
                 })
             });
 
@@ -2867,29 +2867,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==========================================
-// THÊM LOGIC CHO TÍNH NĂNG THANH LÀM MỜ (BLUR BAR)
+// THÊM LOGIC CHO TÍNH NĂNG NHIỀU THANH LÀM MỜ (MULTIPLE BLUR BARS)
 // ==========================================
-window.currentBlurBarSettings = {
-    enabled: false,
-    y_percent: 85,
-    h_percent: 15,
-    intensity: 15
-};
+window.blurBars = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    const blurBarToggle = document.getElementById('blurBarToggle');
-    const blurBarSettingsGroup = document.getElementById('blurBarSettingsGroup');
-    const blurBarYSlider = document.getElementById('blurBarYSlider');
-    const blurBarYVal = document.getElementById('blurBarYVal');
-    const blurBarHSlider = document.getElementById('blurBarHSlider');
-    const blurBarHVal = document.getElementById('blurBarHVal');
-    const blurBarIntensitySlider = document.getElementById('blurBarIntensitySlider');
-    const blurBarIntensityVal = document.getElementById('blurBarIntensityVal');
-    const videoBlurOverlay = document.getElementById('videoBlurOverlay');
+    const blurBarsContainer = document.getElementById('blurBarsContainer');
+    const addBlurBarBtn = document.getElementById('addBlurBarBtn');
     const workspaceVideo = document.getElementById('workspaceVideo');
+    const previewContainer = document.querySelector('.preview-container');
 
-    // Mượn hàm getVideoActiveArea đã định nghĩa từ phần Logo
-    // Hàm này sẽ trả về bounding box thực tế của video
     function getVideoActiveArea() {
         const container = workspaceVideo.parentElement;
         if (!workspaceVideo.videoWidth) {
@@ -2913,112 +2900,202 @@ document.addEventListener('DOMContentLoaded', () => {
         return { x: xOffset, y: yOffset, w: actualWidth, h: actualHeight };
     }
 
+    function renderBlurBarsUI() {
+        if (!blurBarsContainer) return;
+        blurBarsContainer.innerHTML = '';
+        window.blurBars.forEach((bar, index) => {
+            const barHTML = `
+                <div class="blur-bar-settings-card" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); padding: 12px; margin-bottom: 10px; border-radius: var(--radius-sm);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div style="font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
+                            <label class="ui-switch" style="transform: scale(0.8); margin: 0;">
+                                <input type="checkbox" class="blur-bar-enable-toggle" data-index="${index}" ${bar.enabled ? 'checked' : ''}>
+                                <span class="slider-round"></span>
+                            </label>
+                            Thanh #${index + 1}
+                        </div>
+                        <button class="remove-blur-bar-btn" data-index="${index}" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: var(--error); cursor: pointer; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px;">Xóa</button>
+                    </div>
+                    <div class="stylist-group">
+                        <div class="label-with-value">
+                            <label>VỊ TRÍ (Y)</label>
+                            <span id="blurBarYVal_${index}">${bar.y_percent}%</span>
+                        </div>
+                        <input type="range" class="custom-slider blur-bar-y-slider" data-index="${index}" min="0" max="100" step="1" value="${bar.y_percent}">
+                    </div>
+                    <div class="stylist-group" style="margin-top: 10px;">
+                        <div class="label-with-value">
+                            <label>CHIỀU CAO</label>
+                            <span id="blurBarHVal_${index}">${bar.h_percent}%</span>
+                        </div>
+                        <input type="range" class="custom-slider blur-bar-h-slider" data-index="${index}" min="5" max="50" step="1" value="${bar.h_percent}">
+                    </div>
+                    <div class="stylist-group" style="margin-top: 10px;">
+                        <div class="label-with-value">
+                            <label>CƯỜNG ĐỘ</label>
+                            <span id="blurBarIntensityVal_${index}">${bar.intensity}</span>
+                        </div>
+                        <input type="range" class="custom-slider blur-bar-intensity-slider" data-index="${index}" min="1" max="50" step="1" value="${bar.intensity}">
+                    </div>
+                </div>
+            `;
+            blurBarsContainer.insertAdjacentHTML('beforeend', barHTML);
+        });
+
+        document.querySelectorAll('.remove-blur-bar-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const index = parseInt(e.target.getAttribute('data-index'));
+                window.blurBars.splice(index, 1);
+                renderBlurBarsUI();
+                updateBlurBarDisplay();
+            });
+        });
+
+        document.querySelectorAll('.blur-bar-enable-toggle').forEach(toggle => {
+            toggle.addEventListener('change', (e) => {
+                const index = parseInt(e.target.getAttribute('data-index'));
+                window.blurBars[index].enabled = e.target.checked;
+                updateBlurBarDisplay();
+            });
+        });
+
+        document.querySelectorAll('.blur-bar-y-slider').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const index = parseInt(e.target.getAttribute('data-index'));
+                window.blurBars[index].y_percent = parseFloat(e.target.value);
+                const valEl = document.getElementById(`blurBarYVal_${index}`);
+                if (valEl) valEl.textContent = e.target.value + '%';
+                updateBlurBarDisplay();
+            });
+        });
+
+        document.querySelectorAll('.blur-bar-h-slider').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const index = parseInt(e.target.getAttribute('data-index'));
+                window.blurBars[index].h_percent = parseFloat(e.target.value);
+                const valEl = document.getElementById(`blurBarHVal_${index}`);
+                if (valEl) valEl.textContent = e.target.value + '%';
+                updateBlurBarDisplay();
+            });
+        });
+
+        document.querySelectorAll('.blur-bar-intensity-slider').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const index = parseInt(e.target.getAttribute('data-index'));
+                window.blurBars[index].intensity = parseInt(e.target.value);
+                const valEl = document.getElementById(`blurBarIntensityVal_${index}`);
+                if (valEl) valEl.textContent = e.target.value;
+                updateBlurBarDisplay();
+            });
+        });
+    }
+
     function updateBlurBarDisplay() {
-        if (!window.currentBlurBarSettings.enabled) {
-            videoBlurOverlay.style.display = 'none';
-            return;
-        }
-        videoBlurOverlay.style.display = 'block';
-        
+        document.querySelectorAll('.blur-bar-overlay-dynamic').forEach(el => el.remove());
+
         const area = getVideoActiveArea();
-        
-        // Tính toán tọa độ và kích thước dựa trên active area
-        const topPx = area.y + (window.currentBlurBarSettings.y_percent / 100) * area.h;
-        const heightPx = (window.currentBlurBarSettings.h_percent / 100) * area.h;
-        
-        // Gán CSS
-        videoBlurOverlay.style.top = topPx + 'px';
-        videoBlurOverlay.style.height = heightPx + 'px';
-        videoBlurOverlay.style.left = area.x + 'px';
-        videoBlurOverlay.style.width = area.w + 'px';
-        
-        // Cường độ blur overlay (chỉ là CSS cho dễ nhìn trên web, FFmpeg sẽ dùng giá trị thật)
-        const blurPx = Math.max(2, window.currentBlurBarSettings.intensity / 2);
-        videoBlurOverlay.style.backdropFilter = `blur(${blurPx}px)`;
-    }
+        if (!area || area.w === 0) return;
 
-    if (blurBarToggle) {
-        blurBarToggle.addEventListener('change', (e) => {
-            window.currentBlurBarSettings.enabled = e.target.checked;
-            if (e.target.checked) {
-                blurBarSettingsGroup.classList.remove('hidden');
-            } else {
-                blurBarSettingsGroup.classList.add('hidden');
+        window.blurBars.forEach((bar, index) => {
+            if (!bar.enabled) return;
+            
+            const overlay = document.createElement('div');
+            overlay.className = 'blur-bar-overlay-dynamic';
+            overlay.setAttribute('data-index', index);
+            
+            const topPx = area.y + (bar.y_percent / 100) * area.h;
+            const heightPx = (bar.h_percent / 100) * area.h;
+            const blurPx = Math.max(2, bar.intensity / 2);
+
+            overlay.style.position = 'absolute';
+            overlay.style.zIndex = '5';
+            overlay.style.background = 'rgba(0,0,0,0.5)';
+            overlay.style.backdropFilter = `blur(${blurPx}px)`;
+            overlay.style.boxSizing = 'border-box';
+            overlay.style.borderTop = '1px dashed #ef4444';
+            overlay.style.borderBottom = '1px dashed #ef4444';
+            overlay.style.cursor = 'ns-resize';
+            
+            overlay.style.top = topPx + 'px';
+            overlay.style.height = heightPx + 'px';
+            overlay.style.left = area.x + 'px';
+            overlay.style.width = area.w + 'px';
+
+            if (previewContainer) {
+                previewContainer.appendChild(overlay);
             }
+        });
+    }
+
+    if (addBlurBarBtn) {
+        addBlurBarBtn.addEventListener('click', () => {
+            window.blurBars.push({
+                enabled: true,
+                y_percent: 85,
+                h_percent: 15,
+                intensity: 15
+            });
+            renderBlurBarsUI();
             updateBlurBarDisplay();
         });
     }
 
-    if (blurBarYSlider) {
-        blurBarYSlider.addEventListener('input', (e) => {
-            blurBarYVal.textContent = e.target.value + '%';
-            window.currentBlurBarSettings.y_percent = parseFloat(e.target.value);
-            updateBlurBarDisplay();
-        });
-    }
+    renderBlurBarsUI();
+    updateBlurBarDisplay();
 
-    if (blurBarHSlider) {
-        blurBarHSlider.addEventListener('input', (e) => {
-            blurBarHVal.textContent = e.target.value + '%';
-            window.currentBlurBarSettings.h_percent = parseFloat(e.target.value);
-            updateBlurBarDisplay();
-        });
-    }
-
-    if (blurBarIntensitySlider) {
-        blurBarIntensitySlider.addEventListener('input', (e) => {
-            blurBarIntensityVal.textContent = e.target.value;
-            window.currentBlurBarSettings.intensity = parseInt(e.target.value);
-            updateBlurBarDisplay();
-        });
-    }
-
-    // Thêm logic kéo thả (drag) cho thanh làm mờ
     let isDraggingBlurBar = false;
+    let draggingBlurBarIndex = -1;
     let blurBarStartY = 0;
     let blurBarStartYPercent = 0;
 
-    if (videoBlurOverlay) {
-        videoBlurOverlay.addEventListener('mousedown', (e) => {
-            isDraggingBlurBar = true;
-            blurBarStartY = e.clientY;
-            blurBarStartYPercent = window.currentBlurBarSettings.y_percent;
-            document.body.style.cursor = 'ns-resize';
-            e.preventDefault(); // Tránh bôi đen text khi kéo
+    if (previewContainer) {
+        previewContainer.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('blur-bar-overlay-dynamic')) {
+                isDraggingBlurBar = true;
+                draggingBlurBarIndex = parseInt(e.target.getAttribute('data-index'));
+                blurBarStartY = e.clientY;
+                blurBarStartYPercent = window.blurBars[draggingBlurBarIndex].y_percent;
+                document.body.style.cursor = 'ns-resize';
+                e.preventDefault();
+            }
         });
     }
 
     window.addEventListener('mousemove', (e) => {
-        if (!isDraggingBlurBar) return;
+        if (!isDraggingBlurBar || draggingBlurBarIndex < 0) return;
         const area = getVideoActiveArea();
         if (!area) return;
 
         const deltaY = e.clientY - blurBarStartY;
         const deltaPercent = (deltaY / area.h) * 100;
         let newPercent = blurBarStartYPercent + deltaPercent;
+        const bar = window.blurBars[draggingBlurBarIndex];
 
-        // Giới hạn không cho ra ngoài video
         if (newPercent < 0) newPercent = 0;
-        if (newPercent + window.currentBlurBarSettings.h_percent > 100) {
-            newPercent = 100 - window.currentBlurBarSettings.h_percent;
+        if (newPercent + bar.h_percent > 100) {
+            newPercent = 100 - bar.h_percent;
         }
 
-        window.currentBlurBarSettings.y_percent = newPercent;
-        if (blurBarYSlider) {
-            blurBarYSlider.value = newPercent;
-            if (blurBarYVal) blurBarYVal.textContent = Math.round(newPercent) + '%';
-        }
+        bar.y_percent = newPercent;
+        
+        const ySlider = document.querySelector(`.blur-bar-y-slider[data-index="${draggingBlurBarIndex}"]`);
+        const yVal = document.getElementById(`blurBarYVal_${draggingBlurBarIndex}`);
+        if (ySlider) ySlider.value = newPercent;
+        if (yVal) yVal.textContent = Math.round(newPercent) + '%';
+        
         updateBlurBarDisplay();
     });
 
     window.addEventListener('mouseup', () => {
         if (isDraggingBlurBar) {
             isDraggingBlurBar = false;
+            draggingBlurBarIndex = -1;
             document.body.style.cursor = '';
         }
     });
 
-    // Lắng nghe resize
     window.addEventListener('resize', updateBlurBarDisplay);
-    workspaceVideo.addEventListener('loadedmetadata', updateBlurBarDisplay);
+    if (workspaceVideo) {
+        workspaceVideo.addEventListener('loadedmetadata', updateBlurBarDisplay);
+    }
 });

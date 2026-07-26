@@ -261,8 +261,8 @@ class VideoProcessor:
                      original_volume: float | None = None,
                      dubbed_volume: float | None = None,
                      separate_vocals: bool = False,
-                     progress_callback=None,
-                     blur_bar: dict | None = None) -> str:
+                     progress_callback: Callable[[int, str], None] | None = None,
+                     blur_bars: list[dict] | None = None) -> str:
         """
         Xuất video hoàn chỉnh: chèn phụ đề + trộn audio bằng 1 câu lệnh duy nhất
         với các cấu hình style phụ đề tùy biến và preset encode tối ưu (ultrafast).
@@ -402,16 +402,27 @@ class VideoProcessor:
         # Chuẩn bị chuỗi Blur Bar filter (nếu có)
         v_in = "[0:v]"
         blur_filter = ""
-        if blur_bar and blur_bar.get("enabled"):
-            y_pct = float(blur_bar.get("y_percent", 85))
-            h_pct = float(blur_bar.get("h_percent", 15))
-            intensity = int(blur_bar.get("intensity", 15))
-            blur_filter = (
-                f"[0:v]split[vbase][vblur_orig];"
-                f"[vblur_orig]crop=iw:ih*{h_pct/100}:0:ih*{y_pct/100},boxblur={intensity}:1[vblurred];"
-                f"[vbase][vblurred]overlay=0:ih*{y_pct/100}[vpre];"
-            )
-            v_in = "[vpre]"
+        if blur_bars:
+            active_bars = [b for b in blur_bars if b.get("enabled")]
+            if active_bars:
+                last_v_out = "[0:v]"
+                for i, bar in enumerate(active_bars):
+                    y_pct = float(bar.get("y_percent", 85))
+                    h_pct = float(bar.get("h_percent", 15))
+                    intensity = int(bar.get("intensity", 15))
+                    
+                    v_base = f"[vbase{i}]"
+                    v_orig = f"[vblur_orig{i}]"
+                    v_blurred = f"[vblurred{i}]"
+                    v_out = f"[vpre{i}]"
+                    
+                    blur_filter += (
+                        f"{last_v_out}split{v_base}{v_orig};"
+                        f"{v_orig}crop=iw:ih*{h_pct/100}:0:ih*{y_pct/100},boxblur={intensity}:1{v_blurred};"
+                        f"{v_base}{v_blurred}overlay=0:ih*{y_pct/100}{v_out};"
+                    )
+                    last_v_out = v_out
+                v_in = last_v_out
 
         if no_vocals_path:
             # Nhạc nền gốc tách bằng Demucs ở input 2 (nếu có dubbed_audio_path thì input 1 là dubbed)
