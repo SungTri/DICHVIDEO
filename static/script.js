@@ -110,6 +110,7 @@ const elements = {
     // Result elements
     resultTitle: document.getElementById('resultTitle'),
     downloadBtn: document.getElementById('downloadBtn'),
+    downloadSrtBtn: document.getElementById('downloadSrtBtn'),
     newJobBtn: document.getElementById('newJobBtn'),
 
     // Error elements
@@ -1405,6 +1406,11 @@ function updateUI(data) {
         showTab('resultTab');
         if (data.download_url) {
             elements.downloadBtn.href = data.download_url;
+            if (elements.downloadSrtBtn) {
+                const srtUrl = data.download_url.replace('/local_video.mp4', '/subtitles_vi.srt').replace('/dubbed_video.mp4', '/subtitles_vi.srt');
+                elements.downloadSrtBtn.href = srtUrl;
+                elements.downloadSrtBtn.style.display = 'inline-flex';
+            }
         }
         disconnectWebSocket();
         stopPolling();
@@ -1750,6 +1756,11 @@ async function openProject(jobId) {
             showTab('resultTab');
             elements.resultTitle.textContent = data.video_info ? data.video_info.title : '';
             elements.downloadBtn.href = data.download_url;
+            if (elements.downloadSrtBtn) {
+                const srtUrl = data.download_url.replace('/local_video.mp4', '/subtitles_vi.srt').replace('/dubbed_video.mp4', '/subtitles_vi.srt');
+                elements.downloadSrtBtn.href = srtUrl;
+                elements.downloadSrtBtn.style.display = 'inline-flex';
+            }
             disconnectWebSocket();
         } else if (data.status === 'processing') {
             resetProgressSteps();
