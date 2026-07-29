@@ -93,6 +93,8 @@ SAMBANOVA_API_KEY = os.environ.get("SAMBANOVA_API_KEY", "")
 # --- ElevenLabs API Key (Không bắt buộc - Cho phép dùng giọng đọc cao cấp) ---
 # Đăng ký tại: https://elevenlabs.io/
 ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
+ELEVENLABS_VOICE_ADAM = "pNInz6obpgDQGcFmaJcg"
+ELEVENLABS_VOICE_BELLA = "EXAVITQu4vr4xnSDxMaL"
 
 # --- Audio Separation (Lọc giọng gốc bằng AI Demucs) ---
 ENABLE_DEMUCS = True  # Kích hoạt tính năng này trong hệ thống

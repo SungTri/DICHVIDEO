@@ -6,6 +6,7 @@ import os
 import sys
 import subprocess
 import shutil
+from typing import Callable
 from config import FFMPEG_PATH, FFPROBE_PATH, ORIGINAL_AUDIO_VOLUME, DUBBED_AUDIO_VOLUME
 
 
