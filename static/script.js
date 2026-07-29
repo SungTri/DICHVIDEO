@@ -1407,7 +1407,7 @@ function updateUI(data) {
         if (data.download_url) {
             elements.downloadBtn.href = data.download_url;
             if (elements.downloadSrtBtn) {
-                const srtUrl = data.download_url.replace('/local_video.mp4', '/subtitles_vi.srt').replace('/dubbed_video.mp4', '/subtitles_vi.srt');
+                const srtUrl = `/downloads/${currentJobId}/subtitles_vi.srt`;
                 elements.downloadSrtBtn.href = srtUrl;
                 elements.downloadSrtBtn.style.display = 'inline-flex';
             }
@@ -1757,7 +1757,7 @@ async function openProject(jobId) {
             elements.resultTitle.textContent = data.video_info ? data.video_info.title : '';
             elements.downloadBtn.href = data.download_url;
             if (elements.downloadSrtBtn) {
-                const srtUrl = data.download_url.replace('/local_video.mp4', '/subtitles_vi.srt').replace('/dubbed_video.mp4', '/subtitles_vi.srt');
+                const srtUrl = `/downloads/${jobId}/subtitles_vi.srt`;
                 elements.downloadSrtBtn.href = srtUrl;
                 elements.downloadSrtBtn.style.display = 'inline-flex';
             }
