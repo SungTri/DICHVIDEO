@@ -1407,7 +1407,7 @@ function updateUI(data) {
         if (data.download_url) {
             elements.downloadBtn.href = data.download_url;
             if (elements.downloadSrtBtn) {
-                const srtUrl = `/downloads/${currentJobId}/subtitles_vi.srt`;
+                const srtUrl = `/api/download/srt/${currentJobId}`;
                 elements.downloadSrtBtn.href = srtUrl;
                 elements.downloadSrtBtn.style.display = 'inline-flex';
             }
@@ -1757,7 +1757,7 @@ async function openProject(jobId) {
             elements.resultTitle.textContent = data.video_info ? data.video_info.title : '';
             elements.downloadBtn.href = data.download_url;
             if (elements.downloadSrtBtn) {
-                const srtUrl = `/downloads/${jobId}/subtitles_vi.srt`;
+                const srtUrl = `/api/download/srt/${jobId}`;
                 elements.downloadSrtBtn.href = srtUrl;
                 elements.downloadSrtBtn.style.display = 'inline-flex';
             }
@@ -1956,7 +1956,8 @@ if (elements.exportBtn) {
                     separate_vocals: document.getElementById('wsSeparateVocals') ? document.getElementById('wsSeparateVocals').checked : false,
                     output_folder: document.getElementById('wsOutputFolderSelect') ? document.getElementById('wsOutputFolderSelect').value : null,
                     custom_output_dir: document.getElementById('wsCustomOutputDir') ? document.getElementById('wsCustomOutputDir').value.trim() : null,
-                    blur_bars: window.blurBars || null
+                    blur_bars: window.blurBars || null,
+                    logo_settings: window.currentLogoSettings || null
                 })
             });
 

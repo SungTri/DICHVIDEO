@@ -263,7 +263,8 @@ class VideoProcessor:
                      dubbed_volume: float | None = None,
                      separate_vocals: bool = False,
                      progress_callback: Callable[[int, str], None] | None = None,
-                     blur_bars: list[dict] | None = None) -> str:
+                     blur_bars: list[dict] | None = None,
+                     logo_settings: dict | None = None) -> str:
         """
         Xuất video hoàn chỉnh: chèn phụ đề + trộn audio bằng 1 câu lệnh duy nhất
         với các cấu hình style phụ đề tùy biến và preset encode tối ưu (ultrafast).
@@ -412,7 +413,12 @@ class VideoProcessor:
                     x_pct = float(bar.get("x_percent", 0))
                     h_pct = float(bar.get("h_percent", 15))
                     w_pct = float(bar.get("w_percent", 100))
-                    intensity = int(bar.get("intensity", 15))
+                    requested_intensity = int(bar.get("intensity", 15))
+                    
+                    crop_w = width * (w_pct / 100)
+                    crop_h = height * (h_pct / 100)
+                    max_intensity = int(min(crop_w, crop_h) / 2.1)
+                    intensity = min(requested_intensity, max(1, max_intensity))
                     
                     v_base = f"[vbase{i}]"
                     v_orig = f"[vblur_orig{i}]"
@@ -427,42 +433,67 @@ class VideoProcessor:
                     last_v_out = v_out
                 v_in = last_v_out
 
-        if no_vocals_path:
-            # Nhạc nền gốc tách bằng Demucs ở input 2 (nếu có dubbed_audio_path thì input 1 là dubbed)
-            if dubbed_audio_path:
-                filter_complex = (
-                    f"{blur_filter}"
-                    f"{v_in}subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout];"
-                    f"[2:a]volume={orig_vol}[orig];"
-                    f"[1:a]volume={dub_vol}[dub];"
-                    f"[orig][dub]amix=inputs=2:duration=first:dropout_transition=3[aout]"
-                )
-                inputs = ['-i', video_path, '-i', dubbed_audio_path, '-i', no_vocals_path]
+        logo_filter = ""
+        logo_input_args = []
+        if logo_settings and logo_settings.get("visible") and logo_settings.get("base64"):
+            import base64
+            logo_data = logo_settings["base64"].split(",")[1]
+            logo_path = os.path.join(work_dir, "logo.png")
+            with open(logo_path, "wb") as f:
+                f.write(base64.b64decode(logo_data))
+                
+            logo_size_pct = float(logo_settings.get("size", 15))
+            logo_w = int(width * logo_size_pct / 100)
+            logo_x_pct = float(logo_settings.get("x", 0.05))
+            logo_y_pct = float(logo_settings.get("y", 0.05))
+            logo_opacity = float(logo_settings.get("opacity", 100)) / 100.0
+            
+            logo_idx = 2
+            if no_vocals_path and dubbed_audio_path:
+                logo_idx = 3
+            elif no_vocals_path or dubbed_audio_path:
+                logo_idx = 2
             else:
-                filter_complex = (
-                    f"{blur_filter}"
-                    f"{v_in}subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout];"
-                    f"[1:a]volume={orig_vol}[aout]"
-                )
-                inputs = ['-i', video_path, '-i', no_vocals_path]
+                logo_idx = 1
+                
+            logo_filter = (
+                f"[{logo_idx}:v]scale={logo_w}:-1,format=rgba,colorchannelmixer=aa={logo_opacity}[logo];"
+                f"{v_in}[logo]overlay=W*{logo_x_pct}:H*{logo_y_pct}[vlogo_out];"
+            )
+            v_in = "[vlogo_out]"
+            logo_input_args = ['-i', logo_path]
+
+        audio_mix_filter = ""
+        inputs = ['-i', video_path]
+        
+        if dubbed_audio_path and no_vocals_path:
+            inputs.extend(['-i', dubbed_audio_path, '-i', no_vocals_path])
+            audio_mix_filter = (
+                f"[2:a]volume={orig_vol}[orig];"
+                f"[1:a]volume={dub_vol}[dub];"
+                f"[orig][dub]amix=inputs=2:duration=first:dropout_transition=3[aout]"
+            )
+        elif dubbed_audio_path:
+            inputs.extend(['-i', dubbed_audio_path])
+            audio_mix_filter = (
+                f"[0:a]volume={orig_vol}[orig];"
+                f"[1:a]volume={dub_vol}[dub];"
+                f"[orig][dub]amix=inputs=2:duration=first:dropout_transition=3[aout]"
+            )
+        elif no_vocals_path:
+            inputs.extend(['-i', no_vocals_path])
+            audio_mix_filter = f"[1:a]volume={orig_vol}[aout]"
         else:
-            # Nhạc nền gốc của video ở input 0
-            if dubbed_audio_path:
-                filter_complex = (
-                    f"{blur_filter}"
-                    f"{v_in}subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout];"
-                    f"[0:a]volume={orig_vol}[orig];"
-                    f"[1:a]volume={dub_vol}[dub];"
-                    f"[orig][dub]amix=inputs=2:duration=first:dropout_transition=3[aout]"
-                )
-                inputs = ['-i', video_path, '-i', dubbed_audio_path]
-            else:
-                filter_complex = (
-                    f"{blur_filter}"
-                    f"{v_in}subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout];"
-                    f"[0:a]volume={orig_vol}[aout]"
-                )
-                inputs = ['-i', video_path]
+            audio_mix_filter = f"[0:a]volume={orig_vol}[aout]"
+            
+        inputs.extend(logo_input_args)
+
+        filter_complex = (
+            f"{blur_filter}"
+            f"{logo_filter}"
+            f"{v_in}subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout];"
+            f"{audio_mix_filter}"
+        )
 
         # Kiểm tra bộ giải mã phần cứng tốt nhất
         encoder = self.get_best_video_encoder()
@@ -524,34 +555,23 @@ class VideoProcessor:
             print("[VideoProcessor] Thử phương án dự phòng (chỉ dùng lồng tiếng trên CPU)...")
             try:
                 shutil.copy2(srt_path, temp_srt) # copy lại srt do đã bị xóa
-                filter_complex_fallback = f"[0:v]subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout]"
+                filter_complex_fallback = f"{blur_filter}{logo_filter}{v_in}subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout]"
+                
+                fallback_inputs = ['-i', video_path]
                 if dubbed_audio_path:
-                    cmd_fallback = [
-                        FFMPEG_PATH,
-                        '-i', video_path,
-                        '-i', dubbed_audio_path,
-                        '-filter_complex', filter_complex_fallback,
-                        '-map', '[vout]',
-                        '-map', '1:a',
-                        '-c:v', 'libx264',
-                        '-preset', 'ultrafast',
-                        '-c:a', 'aac',
-                        '-y', '-loglevel', 'warning',
-                        output_path
-                    ]
-                else:
-                    cmd_fallback = [
-                        FFMPEG_PATH,
-                        '-i', video_path,
-                        '-filter_complex', filter_complex_fallback,
-                        '-map', '[vout]',
-                        '-map', '0:a',
-                        '-c:v', 'libx264',
-                        '-preset', 'ultrafast',
-                        '-c:a', 'aac',
-                        '-y', '-loglevel', 'warning',
-                        output_path
-                    ]
+                    fallback_inputs.extend(['-i', dubbed_audio_path])
+                fallback_inputs.extend(logo_input_args)
+                
+                cmd_fallback = [FFMPEG_PATH] + fallback_inputs + [
+                    '-filter_complex', filter_complex_fallback,
+                    '-map', '[vout]',
+                    '-map', '1:a' if dubbed_audio_path else '0:a',
+                    '-c:v', 'libx264',
+                    '-preset', 'ultrafast',
+                    '-c:a', 'aac',
+                    '-y', '-loglevel', 'warning',
+                    output_path
+                ]
                 result_fallback = subprocess.run(cmd_fallback, capture_output=True, text=True)
                 if os.path.exists(temp_srt):
                     os.remove(temp_srt)

@@ -387,6 +387,7 @@ async def process_pipeline_finish(job_id: str, segments: list, voice: str, sub_s
                                  original_volume: float | None = None, dubbed_volume: float | None = None,
                                  separate_vocals: bool = False, output_folder: str | None = None,
                                  custom_output_dir: str | None = None, blur_bars: list[dict] | None = None,
+                                 logo_settings: dict | None = None,
                                  voice_speed: float = 1.0):
     """Giai đoạn 2: Tạo lồng tiếng từ bản dịch đã sửa, xuất video theo style cấu hình."""
     loop = asyncio.get_event_loop()
@@ -472,7 +473,8 @@ async def process_pipeline_finish(job_id: str, segments: list, voice: str, sub_s
             dubbed_volume=dubbed_volume,
             separate_vocals=separate_vocals,
             progress_callback=vp_callback,
-            blur_bars=blur_bars
+            blur_bars=blur_bars,
+            logo_settings=logo_settings
         )
 
         await update_step(job_id, 4, "completed", 100, "Hoàn thành!")
@@ -526,6 +528,7 @@ class FinishRequest(BaseModel):
     output_folder: str | None = None
     custom_output_dir: str | None = None
     blur_bars: list[dict] | None = None
+    logo_settings: dict | None = None
 
 
 class SrtToAudioRequest(BaseModel):
@@ -604,6 +607,7 @@ async def finish_processing(request: FinishRequest):
             output_folder=request.output_folder,
             custom_output_dir=request.custom_output_dir,
             blur_bars=request.blur_bars,
+            logo_settings=request.logo_settings,
             voice_speed=request.voice_speed
         )
     )
@@ -661,6 +665,37 @@ async def download_result(job_id: str):
         )
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"Lỗi đọc file: {str(e)}"})
+
+@app.get("/api/download/srt/{job_id}")
+async def download_srt(job_id: str):
+    job = get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+        
+    srt_path = os.path.join(TEMP_DIR, job_id, "subtitles_vi.srt")
+    if not os.path.exists(srt_path):
+        return JSONResponse(status_code=404, content={"error": "File SRT không tồn tại"})
+        
+    try:
+        with open(srt_path, "rb") as f:
+            file_content = f.read()
+            
+        import urllib.parse
+        download_name = f"{job.get('video_info', {}).get('title', 'video')}_VI.srt"
+        download_name = "".join(c for c in download_name if c.isalnum() or c in " ._-").strip()
+        encoded_filename = urllib.parse.quote(download_name)
+        
+        headers = {
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+        }
+        
+        return Response(
+            content=file_content,
+            media_type="application/x-subrip",
+            headers=headers
+        )
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": f"Lỗi đọc file SRT: {str(e)}"})
 
 
 @app.post("/api/srt-to-audio")
