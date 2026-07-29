@@ -41,7 +41,8 @@ class TTSService:
             # Map sang ElevenLabs Voice ID
             voice_mapping = {
                 "eleven_antonio": "ErXwobaYiN019PkySvjV",
-                "eleven_rachel": "21m00Tcm4TlvDq8ikWAM"
+                "eleven_rachel": "21m00Tcm4TlvDq8ikWAM",
+                "eleven_giongbe": "xXcABhgPXUrNiSHUbNjE"
             }
             voice_id = voice_mapping.get(voice, "ErXwobaYiN019PkySvjV")
             
