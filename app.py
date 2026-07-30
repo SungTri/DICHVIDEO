@@ -264,7 +264,8 @@ async def process_pipeline_start(job_id: str, url: str | None = None,
                                 model_size: str = "base", 
                                 source_lang: str = "en", 
                                 original_volume: float = 0.15,
-                                video_quality: str = "best"):
+                                video_quality: str = "best",
+                                context_prompt: str | None = None):
     """Giai đoạn 1: Tải video (hoặc dùng local file), tách audio, nhận dạng giọng nói, dịch thuật thô."""
     loop = asyncio.get_event_loop()
     job = jobs[job_id]
@@ -354,7 +355,7 @@ async def process_pipeline_start(job_id: str, url: str | None = None,
             trans_lang = "en"  # Fallback
 
         translated_segments = await asyncio.to_thread(
-            translator.translate_segments, segments, trans_lang, tl_callback
+            translator.translate_segments, segments, trans_lang, tl_callback, context_prompt
         )
 
         # Lưu bản dịch thô
@@ -514,6 +515,7 @@ class StartRequest(BaseModel):
     series_name: str | None = None
     episode_name: str | None = None
     separate_vocals: bool = False
+    context_prompt: str | None = None
 
 
 class FinishRequest(BaseModel):
@@ -574,7 +576,7 @@ async def start_processing(request: StartRequest):
         process_pipeline_start(
             job_id, request.url, request.model_size, 
             request.source_lang, request.original_volume,
-            request.video_quality
+            request.video_quality, request.context_prompt
         )
     )
 

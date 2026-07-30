@@ -1877,7 +1877,8 @@ if (elements.processBtn) {
             video_quality: configs.video_quality,
             separate_vocals: isSeparate,
             series_name: elements.seriesInput.value.trim() || null,
-            episode_name: elements.episodeInput.value.trim() || null
+            episode_name: elements.episodeInput.value.trim() || null,
+            context_prompt: document.getElementById('contextInput') ? document.getElementById('contextInput').value.trim() : null
         };
 
         if (uploadedJobId) {
