@@ -18,6 +18,8 @@ import asyncio
 import uuid
 import shutil
 import traceback
+import json
+import time
 from typing import Dict, List
 from contextlib import asynccontextmanager
 
@@ -78,9 +80,6 @@ tts_service = TTSService()
 video_processor = VideoProcessor()
 
 # Lưu trữ job (history.json vĩnh viễn + in-memory cache)
-import json
-import time
-
 HISTORY_FILE = os.path.join(BASE_DIR, "history.json")
 
 def load_history() -> dict:
