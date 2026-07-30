@@ -21,7 +21,7 @@ import traceback
 from typing import Dict, List
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Response
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Response, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -670,7 +670,7 @@ async def download_result(job_id: str):
 
 @app.get("/api/download/srt/{job_id}")
 async def download_srt(job_id: str):
-    job = get_job(job_id)
+    job = jobs.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
         
@@ -874,7 +874,7 @@ def save_folders(folders: list):
 async def get_folders():
     """Lấy danh sách tất cả thư mục (bao gồm cả thư mục tự tạo và thư mục trích xuất từ các job)."""
     custom_folders = load_folders()
-    job_folders = {job.get("series_name").strip() for job in jobs.values() if job.get("series_name")}
+    job_folders = {job["series_name"].strip() for job in jobs.values() if job.get("series_name") and isinstance(job["series_name"], str)}
     
     all_folders = list(custom_folders)
     for folder in job_folders:

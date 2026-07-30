@@ -288,7 +288,7 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
 
     # ==================== MAIN TRANSLATE METHOD ====================
 
-    def translate_segments(self, segments: list, from_lang: str = "en", progress_callback=None, context_prompt: str = None) -> list:
+    def translate_segments(self, segments: list, from_lang: str = "en", progress_callback=None, context_prompt: str | None = None) -> list:
         """
         Dịch tất cả các segments phụ đề.
         Chia nhỏ thành batch ~40 đoạn, thử lần lượt Gemini → GitHub → SambaNova → Groq → Argos.

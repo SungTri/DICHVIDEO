@@ -262,7 +262,7 @@ class VideoProcessor:
                      original_volume: float | None = None,
                      dubbed_volume: float | None = None,
                      separate_vocals: bool = False,
-                     progress_callback: Callable[[int, str], None] | None = None,
+                     progress_callback: Callable[[float], None] | None = None,
                      blur_bars: list[dict] | None = None,
                      logo_settings: dict | None = None) -> str:
         """
