@@ -848,6 +848,24 @@ async def download_audio(filename: str):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"Lỗi đọc file: {str(e)}"})
 
+@app.get("/api/voice-preview")
+async def voice_preview(voice: str = "vi-VN-HoaiMyNeural"):
+    """API nghe thử giọng nói"""
+    temp_preview_path = os.path.join(TEMP_DIR, f"preview_{voice}.mp3")
+    try:
+        await tts_service.generate_speech(
+            text="Xin chào, đây là giọng nói thử nghiệm của hệ thống.",
+            output_path=temp_preview_path,
+            voice_name=voice,
+            voice_speed=1.0
+        )
+        if os.path.exists(temp_preview_path):
+            return FileResponse(temp_preview_path, media_type="audio/mpeg")
+        else:
+            return JSONResponse(status_code=404, content={"error": "File not generated"})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
 
 FOLDERS_FILE = os.path.join(BASE_DIR, "folders.json")
 
