@@ -425,9 +425,10 @@ class VideoProcessor:
                     v_blurred = f"[vblurred{i}]"
                     v_out = f"[vpre{i}]"
                     
+                    chroma_intensity = min(intensity, 16)
                     blur_filter += (
                         f"{last_v_out}split{v_base}{v_orig};"
-                        f"{v_orig}crop=iw*{w_pct/100}:ih*{h_pct/100}:iw*{x_pct/100}:ih*{y_pct/100},boxblur={intensity}:1{v_blurred};"
+                        f"{v_orig}crop=iw*{w_pct/100}:ih*{h_pct/100}:iw*{x_pct/100}:ih*{y_pct/100},boxblur={intensity}:1:{chroma_intensity}:1{v_blurred};"
                         f"{v_base}{v_blurred}overlay=W*{x_pct/100}:H*{y_pct/100}{v_out};"
                     )
                     last_v_out = v_out
