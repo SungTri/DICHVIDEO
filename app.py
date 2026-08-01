@@ -647,25 +647,17 @@ async def download_result(job_id: str):
     if not download_name:
         download_name = "translated_video.mp4"
 
-    # Đọc nhị phân và trả về trực tiếp để tránh lỗi asyncio/anyio Proactor connection reset trên Windows
-    try:
-        with open(output_path, "rb") as f:
-            file_content = f.read()
-            
-        import urllib.parse
-        encoded_filename = urllib.parse.quote(download_name)
-        
-        headers = {
-            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
-        }
-        
-        return Response(
-            content=file_content,
-            media_type="video/mp4",
-            headers=headers
-        )
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": f"Lỗi đọc file: {str(e)}"})
+    # Sử dụng FileResponse để stream file hiệu quả, tránh tốn RAM
+    import urllib.parse
+    encoded_filename = urllib.parse.quote(download_name)
+    headers = {
+        "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+    }
+    return FileResponse(
+        path=output_path,
+        media_type="video/mp4",
+        headers=headers
+    )
 
 @app.get("/api/download/srt/{job_id}")
 async def download_srt(job_id: str):
@@ -829,24 +821,17 @@ async def download_audio(filename: str):
         return JSONResponse(status_code=404, content={"error": "File không tồn tại"})
     
     # Trả về Response nhị phân trực tiếp để chống lỗi kết nối Proactor trên Windows
-    try:
-        with open(output_path, "rb") as f:
-            file_content = f.read()
-            
-        import urllib.parse
-        encoded_filename = urllib.parse.quote(filename)
-        
-        headers = {
-            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
-        }
-        
-        return Response(
-            content=file_content,
-            media_type="audio/mpeg",
-            headers=headers
-        )
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": f"Lỗi đọc file: {str(e)}"})
+    # Sử dụng FileResponse để tối ưu RAM
+    import urllib.parse
+    encoded_filename = urllib.parse.quote(filename)
+    headers = {
+        "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+    }
+    return FileResponse(
+        path=output_path,
+        media_type="audio/mpeg",
+        headers=headers
+    )
 
 @app.get("/api/voice-preview")
 async def voice_preview(voice: str = "vi-VN-HoaiMyNeural"):
