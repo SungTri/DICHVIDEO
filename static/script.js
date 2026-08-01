@@ -1939,7 +1939,7 @@ if (elements.exportBtn) {
             outline: elements.subOutline ? elements.subOutline.checked : true,
             outline_width: elements.subOutlineWidth ? parseFloat(elements.subOutlineWidth.value) : 4.0,
             shadow: elements.subShadow ? elements.subShadow.checked : false,
-            margin_v_percent: configs.sub_margin_v_percent !== undefined ? configs.sub_margin_v_percent : 12
+            margin_v_percent: configs.sub_margin_v_percent !== undefined ? configs.sub_margin_v_percent : 5
         };
 
         try {

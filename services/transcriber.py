@@ -180,7 +180,10 @@ class Transcriber:
                 end_ts = Transcriber.format_timestamp(seg['end'])
                 f.write(f"{i}\n")
                 f.write(f"{start_ts} --> {end_ts}\n")
-                f.write(f"{seg['text']}\n\n")
+                # Xử lý an toàn: loại bỏ các dòng trắng liên tiếp, tránh làm hỏng định dạng SRT
+                safe_text = str(seg['text']).replace('\r\n', '\n').strip()
+                safe_text = '\n'.join([line.strip() for line in safe_text.split('\n') if line.strip()])
+                f.write(f"{safe_text}\n\n")
 
         print(f"[Transcriber] Đã tạo file SRT: {output_path}")
         return output_path

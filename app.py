@@ -468,7 +468,7 @@ async def process_pipeline_finish(job_id: str, segments: list, voice: str, sub_s
             sub_outline=bool(sub_style.get("outline", True)),
             sub_outline_width=float(sub_style.get("outline_width", 2.0)),
             sub_shadow=bool(sub_style.get("shadow", True)),
-            sub_margin_v_percent=float(sub_style.get("margin_v_percent", 12.0)),
+            sub_margin_v_percent=float(sub_style.get("margin_v_percent", 5.0)),
             original_volume=original_vol_val,
             dubbed_volume=dubbed_volume,
             separate_vocals=separate_vocals,

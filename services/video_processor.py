@@ -367,10 +367,7 @@ class VideoProcessor:
         if sub_bg == "box":
             border_style = "3"
             outline = "0"
-        elif sub_bg == "none":
-            border_style = "1"
-            outline = "0"
-        else:  # outline hoặc custom
+        else:  # outline, none hoặc custom
             border_style = "1"
             outline = str(sub_outline_width) if sub_outline else "0"
 
