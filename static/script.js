@@ -112,6 +112,7 @@ const elements = {
     downloadBtn: document.getElementById('downloadBtn'),
     downloadSrtBtn: document.getElementById('downloadSrtBtn'),
     newJobBtn: document.getElementById('newJobBtn'),
+    editAgainBtn: document.getElementById('editAgainBtn'),
 
     // Error elements
     errorDetail: document.getElementById('errorDetail'),
@@ -951,8 +952,8 @@ function setupCustomVideoControls() {
 
     video.addEventListener('pause', () => {
         if (videoContainer) videoContainer.classList.add('paused');
-        if (elements.playIcon) elements.playIcon.classList.remove('hidden');
-        if (elements.pauseIcon) elements.pauseIcon.classList.add('hidden');
+        if (elements.playIcon) elements.playIcon.classList.add('hidden');
+        if (elements.pauseIcon) elements.pauseIcon.classList.remove('hidden');
     });
     
     // Thêm class paused ban đầu nếu video đang pause
@@ -2100,6 +2101,44 @@ if (elements.newJobBtn) {
         showTab('homeTab');
         resetProgressSteps();
         elements.urlInput.focus();
+    });
+}
+
+// Chỉnh sửa lại
+if (elements.editAgainBtn) {
+    elements.editAgainBtn.addEventListener('click', async () => {
+        if (!currentJobId || !jobsCache) return;
+        const data = jobsCache;
+        showTab('workspaceTab');
+        originalVideoUrl = data.video_url;
+        elements.workspaceVideo.src = data.video_url;
+        if (elements.workspaceOriginalBtn) elements.workspaceOriginalBtn.style.display = 'none';
+        renderSubtitleList(data.segments);
+        setupVideoSync();
+        initializeWorkspaceSliders(data);
+        disconnectWebSocket();
+        try {
+            const foldersRes = await fetch('/api/folders');
+            if (foldersRes.ok) {
+                const folders = await foldersRes.json();
+                populateWorkspaceFolderSelect(folders);
+                const select = document.getElementById('wsOutputFolderSelect');
+                if (select) {
+                    if (data.series_name && Array.from(select.options).some(opt => opt.value === data.series_name)) {
+                        select.value = data.series_name;
+                    } else {
+                        select.value = 'default';
+                    }
+                }
+            }
+        } catch (e) {}
+        if (data.video_info) {
+            elements.editorVideoTitle.textContent = data.video_info.title;
+            const duration = Math.round(data.video_info.duration) + 's';
+            const size = data.video_info.size ? (data.video_info.size / 1024 / 1024).toFixed(1) + ' MB' : '-- MB';
+            const res = (data.video_info.width && data.video_info.height) ? `${data.video_info.width}x${data.video_info.height}` : '--';
+            elements.editorVideoMeta.textContent = `${duration} • ${size} • ${res} • Đang chỉnh sửa lại`;
+        }
     });
 }
 
