@@ -2356,7 +2356,7 @@ body.dashboard-body {
     width: 100%;
     border: 1px solid transparent;
     background: transparent;
-    color: #1e1b4b; /* Màu tím đậm sang trọng */
+    color: var(--text-primary);
     font-size: 0.9rem;
     font-weight: 600;
     font-family: inherit;
