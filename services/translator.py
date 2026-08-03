@@ -138,7 +138,7 @@ class Translator:
 
     # ==================== BATCH CHUNKING HELPERS ====================
 
-    BATCH_SIZE = 40  # Số đoạn tối đa gửi trong 1 lần gọi API
+    BATCH_SIZE = 20  # Số đoạn tối đa gửi trong 1 lần gọi API
 
     # Mapping tên ngôn ngữ đầy đủ cho prompt
     _LANG_NAMES = {
@@ -162,7 +162,8 @@ CRITICAL REQUIREMENTS:
 1. Translating for video presentations or advertisements, so keep the tone engaging, professional, and natural.
 2. Follow standard Vietnamese grammar and sentence flow (do not translate word-for-word, reorganize sentences if necessary).
 3. Automatically correct any obvious speech-to-text transcription errors in the input based on the general context.
-4. Do not drop or add segment lines. The output MUST contain the exact same list of indexes.{context_str}
+4. Do not drop or add segment lines. The output MUST contain the exact same list of indexes.
+5. Translate EVERYTHING into Vietnamese. Do NOT leave any original {lang_name} characters or words untranslated in the output (except globally recognized English brand names). The final text MUST be 100% Vietnamese.{context_str}
 
 Input subtitle JSON:
 {json_module.dumps(input_data, ensure_ascii=False, indent=2)}
