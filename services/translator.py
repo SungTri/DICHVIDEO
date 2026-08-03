@@ -239,20 +239,41 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
 
                 input_data = [{"index": seg["index"], "text": seg["text"]} for seg in untranslated]
 
-                try:
-                    batch_result = api_call(input_data)
-                    trans_results.update(batch_result)
-                    completed_batches += 1
-                    print(f"  ✅ Batch {batch_idx + 1}/{len(remaining_batches)} ({len(batch_result)} đoạn) — {api_name}")
+                import time
+                max_retries = 3
+                retry_count = 0
+                success = False
 
-                    if progress_callback:
-                        progress_callback(len(trans_results) / total * 90)  # Giữ 10% cho assembly
-                    
-                    import time
-                    time.sleep(3)  # Nghỉ 3 giây để tránh Rate Limit (Too Many Requests)
+                while retry_count <= max_retries:
+                    try:
+                        batch_result = api_call(input_data)
+                        trans_results.update(batch_result)
+                        completed_batches += 1
+                        print(f"  ✅ Batch {batch_idx + 1}/{len(remaining_batches)} ({len(batch_result)} đoạn) — {api_name}")
 
-                except Exception as e:
-                    print(f"  ⚠️ Batch {batch_idx + 1}/{len(remaining_batches)} thất bại ({api_name}): {str(e)}")
+                        if progress_callback:
+                            progress_callback(len(trans_results) / total * 90)  # Giữ 10% cho assembly
+                        
+                        time.sleep(3)  # Nghỉ 3 giây cơ bản để tránh Rate Limit
+                        success = True
+                        break
+
+                    except Exception as e:
+                        error_msg = str(e).lower()
+                        if "429" in error_msg or "too many requests" in error_msg or "rate limit" in error_msg:
+                            retry_count += 1
+                            if retry_count <= max_retries:
+                                sleep_time = 15 * retry_count  # Chờ 15s, 30s, 45s
+                                print(f"  ⏳ Kẹt Rate Limit ({api_name}), chờ {sleep_time}s rồi thử lại lần {retry_count}/{max_retries}...")
+                                time.sleep(sleep_time)
+                            else:
+                                print(f"  ⚠️ Batch {batch_idx + 1}/{len(remaining_batches)} thất bại ({api_name}) sau {max_retries} lần thử lại.")
+                                break
+                        else:
+                            print(f"  ⚠️ Batch {batch_idx + 1}/{len(remaining_batches)} thất bại ({api_name}): {str(e)}")
+                            break
+                            
+                if not success:
                     api_failed = True
                     break  # Chuyển sang API tiếp theo
 
