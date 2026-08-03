@@ -247,6 +247,9 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
 
                     if progress_callback:
                         progress_callback(len(trans_results) / total * 90)  # Giữ 10% cho assembly
+                    
+                    import time
+                    time.sleep(3)  # Nghỉ 3 giây để tránh Rate Limit (Too Many Requests)
 
                 except Exception as e:
                     print(f"  ⚠️ Batch {batch_idx + 1}/{len(remaining_batches)} thất bại ({api_name}): {str(e)}")
