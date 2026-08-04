@@ -2541,8 +2541,22 @@ async function loadSettingsData() {
 
         for (const [key, inputId] of Object.entries(keyMap)) {
             const inputEl = document.getElementById(inputId);
-            if (inputEl && data.api_keys[key]) {
-                inputEl.value = data.api_keys[key];
+            if (key === 'gemini') {
+                const container = document.getElementById('geminiKeysContainer');
+                if (container) container.innerHTML = '';
+                if (data.api_keys[key]) {
+                    const keys = data.api_keys[key].split(',');
+                    for (let i = 0; i < keys.length; i++) {
+                        addGeminiKeyInput(keys[i]?.trim());
+                    }
+                    if (keys.length === 0) addGeminiKeyInput('');
+                } else {
+                    addGeminiKeyInput('');
+                }
+            } else if (data.api_keys[key]) {
+                if (inputEl) {
+                    inputEl.value = data.api_keys[key];
+                }
             }
             const statusEl = document.getElementById(statusMap[key]);
             if (statusEl) {
@@ -2643,9 +2657,12 @@ async function saveSettingsData() {
     }
 
     try {
+        const geminiInputs = document.querySelectorAll('.gemini-dynamic-input');
+        const geminiKeys = Array.from(geminiInputs).map(i => i.value.trim()).filter(Boolean).join(',');
+
         const payload = {
             api_keys: {
-                gemini: document.getElementById('keyGemini')?.value || '',
+                gemini: geminiKeys,
                 groq: document.getElementById('keyGroq')?.value || '',
                 github: document.getElementById('keyGithub')?.value || '',
                 sambanova: document.getElementById('keySambanova')?.value || '',
@@ -3214,3 +3231,48 @@ document.addEventListener('DOMContentLoaded', () => {
         workspaceVideo.addEventListener('loadedmetadata', updateBlurBarDisplay);
     }
 });
+
+let geminiKeyCount = 0;
+function addGeminiKeyInput(val = '') {
+    geminiKeyCount++;
+    const container = document.getElementById('geminiKeysContainer');
+    if (!container) return;
+    
+    const div = document.createElement('div');
+    div.className = 'api-key-input-group';
+    div.style.marginTop = geminiKeyCount > 1 ? '5px' : '0';
+    
+    const inputId = 'keyGemini_' + geminiKeyCount;
+    
+    const input = document.createElement('input');
+    input.type = 'password';
+    input.id = inputId;
+    input.className = 'gemini-dynamic-input';
+    input.placeholder = `Dán API Key Gemini...`;
+    input.value = val;
+    input.style.flex = '1';
+    
+    const eyeBtn = document.createElement('button');
+    eyeBtn.type = 'button';
+    eyeBtn.className = 'btn-toggle-eye';
+    eyeBtn.innerHTML = '👁️';
+    eyeBtn.onclick = function() { toggleKeyVis(inputId, this); };
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn-api-remove';
+    removeBtn.innerHTML = '✕';
+    removeBtn.onclick = function() { div.remove(); };
+    removeBtn.title = "Xóa Key này";
+    removeBtn.style.background = 'transparent';
+    removeBtn.style.border = 'none';
+    removeBtn.style.color = '#ff4a4a';
+    removeBtn.style.cursor = 'pointer';
+    removeBtn.style.padding = '0 5px';
+    
+    div.appendChild(input);
+    div.appendChild(eyeBtn);
+    div.appendChild(removeBtn);
+    
+    container.appendChild(div);
+}

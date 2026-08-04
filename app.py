@@ -1044,7 +1044,11 @@ def format_size(size_bytes: int) -> str:
 
 def mask_key(key: str) -> str:
     """Che giấu API key, chỉ hiện 4 ký tự cuối."""
-    if not key or len(key) < 8:
+    if not key:
+        return ""
+    if "," in key:
+        return ",".join(mask_key(k.strip()) for k in key.split(","))
+    if len(key) < 8:
         return ""
     return "•" * (len(key) - 4) + key[-4:]
 
@@ -1131,9 +1135,30 @@ async def update_settings(request: dict):
     # Cập nhật API Keys (chỉ lưu nếu giá trị mới không phải masked)
     if "api_keys" in request:
         keys = request["api_keys"]
-        if keys.get("gemini") and "•" not in keys["gemini"]:
-            config.GEMINI_API_KEY = keys["gemini"]
-            user_settings.setdefault("api_keys", {})["gemini"] = keys["gemini"]
+        if "gemini" in keys:
+            new_g = keys["gemini"]
+            old_g = getattr(config, "GEMINI_API_KEY", "")
+            if "•" in new_g:
+                new_g_list = [k.strip() for k in new_g.split(",")]
+                old_g_list = [k.strip() for k in str(old_g).split(",")] if old_g else []
+                
+                old_map = {}
+                for ok in old_g_list:
+                    if ok:
+                        old_map[mask_key(ok)] = ok
+                        
+                merged = []
+                for nk in new_g_list:
+                    if "•" in nk:
+                        if nk in old_map:
+                            merged.append(old_map[nk])
+                    elif nk:
+                        merged.append(nk)
+                final_g = ",".join(merged)
+            else:
+                final_g = new_g
+            config.GEMINI_API_KEY = final_g
+            user_settings.setdefault("api_keys", {})["gemini"] = final_g
         if keys.get("groq") and "•" not in keys["groq"]:
             config.GROQ_API_KEY = keys["groq"]
             user_settings.setdefault("api_keys", {})["groq"] = keys["groq"]

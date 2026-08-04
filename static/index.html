@@ -948,11 +948,11 @@ Nội dung cần lồng tiếng..."></textarea>
                                     <span class="api-key-name">Gemini</span>
                                     <span id="statusGemini" class="api-status">⚠️ Chưa cấu hình</span>
                                 </div>
-                                <div class="api-key-input-group">
-                                    <input type="password" id="keyGemini" placeholder="Dán API Key Gemini...">
-                                    <button class="btn-toggle-eye" onclick="toggleKeyVis('keyGemini', this)">👁️</button>
+                                <div id="geminiKeysContainer">
+                                    <!-- Dynamic inputs will go here -->
                                 </div>
-                                <a href="https://aistudio.google.com/" target="_blank" class="api-link">Lấy key miễn phí →</a>
+                                <button type="button" class="btn-api-add" onclick="addGeminiKeyInput()">+ Thêm Key</button>
+                                <a href="https://aistudio.google.com/" target="_blank" class="api-link" style="display:inline-block; margin-left:10px;">Lấy key miễn phí →</a>
                             </div>
                             <div class="api-key-row">
                                 <div class="api-key-info">

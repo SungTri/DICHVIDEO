@@ -3253,4 +3253,22 @@ body.dashboard-body {
     }
 }
 
+.btn-api-add {
+    margin-top: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px dashed var(--border);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    width: fit-content;
+}
+
+.btn-api-add:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--border-hover);
+}
+
 
