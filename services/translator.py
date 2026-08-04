@@ -270,12 +270,19 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
                                 print(f"  ⚠️ Batch {batch_idx + 1}/{len(remaining_batches)} thất bại ({api_name}) sau {max_retries} lần thử lại.")
                                 break
                         else:
-                            print(f"  ⚠️ Batch {batch_idx + 1}/{len(remaining_batches)} thất bại ({api_name}): {str(e)}")
-                            break
+                            retry_count += 1
+                            if retry_count <= max_retries:
+                                print(f"  ⚠️ Lỗi ({api_name}): {str(e)}. Thử lại lần {retry_count}/{max_retries}...")
+                                time.sleep(3)
+                            else:
+                                print(f"  ❌ Batch {batch_idx + 1}/{len(remaining_batches)} thất bại ({api_name}): {str(e)} sau {max_retries} lần thử lại.")
+                                if "401" in error_msg or "403" in error_msg or "unauthorized" in error_msg or "forbidden" in error_msg:
+                                    api_failed = True # Key chết, bỏ qua API này
+                                break
                             
-                if not success:
-                    api_failed = True
-                    break  # Chuyển sang API tiếp theo
+                if api_failed:
+                    break  # Key lỗi, chuyển sang API tiếp theo
+                # Nếu chỉ là lỗi 1 batch, vòng lặp for batch_idx sẽ tiếp tục chạy batch tiếp theo
 
             if not api_failed:
                 # API này dịch thành công tất cả batch
