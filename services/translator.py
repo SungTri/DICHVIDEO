@@ -276,8 +276,8 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
                                 time.sleep(3)
                             else:
                                 print(f"  ❌ Batch {batch_idx + 1}/{len(remaining_batches)} thất bại ({api_name}): {str(e)} sau {max_retries} lần thử lại.")
-                                if "401" in error_msg or "403" in error_msg or "unauthorized" in error_msg or "forbidden" in error_msg:
-                                    api_failed = True # Key chết, bỏ qua API này
+                                if "401" in error_msg or "403" in error_msg or "unauthorized" in error_msg or "forbidden" in error_msg or "429" in error_msg or "too many requests" in error_msg:
+                                    api_failed = True # Key chết hoặc hết Quota, bỏ qua API này
                                 break
                             
                 if api_failed:
