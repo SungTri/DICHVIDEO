@@ -195,14 +195,18 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
 
         # Xây dựng danh sách các API khả dụng theo thứ tự ưu tiên
         api_providers = []
-        if GEMINI_API_KEY and from_lang != "vi":
-            api_providers.append(("Gemini", lambda batch, fl=from_lang, ctx=context_prompt: self._call_gemini(batch, json, urllib.request, GEMINI_API_KEY, fl, ctx)))
-        if GITHUB_TOKEN and from_lang != "vi":
-            api_providers.append(("GitHub GPT-4o-mini", lambda batch, fl=from_lang, ctx=context_prompt: self._call_github(batch, json, urllib.request, GITHUB_TOKEN, fl, ctx)))
-        if SAMBANOVA_API_KEY and from_lang != "vi":
-            api_providers.append(("SambaNova Llama 3.1", lambda batch, fl=from_lang, ctx=context_prompt: self._call_sambanova(batch, json, urllib.request, SAMBANOVA_API_KEY, fl, ctx)))
-        if GROQ_API_KEY and from_lang != "vi":
-            api_providers.append(("Groq Llama 3.3", lambda batch, fl=from_lang, ctx=context_prompt: self._call_groq(batch, json, urllib.request, GROQ_API_KEY, fl, ctx)))
+        
+        def add_providers(key_str, name, call_func):
+            if not key_str or from_lang == "vi": return
+            keys = [k.strip() for k in key_str.split(",") if k.strip()]
+            for idx, key in enumerate(keys):
+                provider_name = f"{name} (Key {idx+1})" if len(keys) > 1 else name
+                api_providers.append((provider_name, lambda batch, fl=from_lang, ctx=context_prompt, k=key: call_func(batch, json, urllib.request, k, fl, ctx)))
+
+        add_providers(GEMINI_API_KEY, "Gemini", self._call_gemini)
+        add_providers(GITHUB_TOKEN, "GitHub GPT-4o-mini", self._call_github)
+        add_providers(SAMBANOVA_API_KEY, "SambaNova Llama 3.1", self._call_sambanova)
+        add_providers(GROQ_API_KEY, "Groq Llama 3.3", self._call_groq)
 
         # Chia segments thành các batch nhỏ
         batches = []
