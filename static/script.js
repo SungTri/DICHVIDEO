@@ -71,6 +71,7 @@ const elements = {
     exportBtn: document.getElementById('exportBtn'),
     workspacePreviewBtn: document.getElementById('workspacePreviewBtn'),
     workspaceOriginalBtn: document.getElementById('workspaceOriginalBtn'),
+    downloadSrtBtn: document.getElementById('downloadSrtBtn'),
     editorRegenAudioBtn: document.getElementById('editorRegenAudioBtn'),
     editorVideoTitle: document.getElementById('editorVideoTitle'),
     editorVideoMeta: document.getElementById('editorVideoMeta'),
@@ -1986,6 +1987,22 @@ if (elements.exportBtn) {
 if (elements.editorRegenAudioBtn) {
     elements.editorRegenAudioBtn.addEventListener('click', () => {
         elements.exportBtn.click();
+    });
+}
+
+// Nút Tải File SRT
+if (elements.downloadSrtBtn) {
+    elements.downloadSrtBtn.addEventListener('click', () => {
+        if (!currentJobId) {
+            alert('Chưa chọn dự án');
+            return;
+        }
+        const a = document.createElement('a');
+        a.href = `/api/download/srt/${currentJobId}`;
+        a.setAttribute('download', '');
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     });
 }
 

@@ -359,6 +359,9 @@ async def process_pipeline_start(job_id: str, url: str | None = None,
 
         # Lưu bản dịch thô
         job["segments"] = translated_segments
+        job_temp_dir = os.path.join(TEMP_DIR, job_id)
+        os.makedirs(job_temp_dir, exist_ok=True)
+        Transcriber.generate_srt(translated_segments, os.path.join(job_temp_dir, "subtitles_vi.srt"))
         await update_step(job_id, 2, "completed", 100, "Đã dịch xong!")
 
         # ============ CHUYỂN SANG REVIEW WORKSPACE ============
@@ -665,7 +668,14 @@ async def download_srt(job_id: str):
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
         
-    srt_path = os.path.join(TEMP_DIR, job_id, "subtitles_vi.srt")
+    job_temp_dir = os.path.join(TEMP_DIR, job_id)
+    os.makedirs(job_temp_dir, exist_ok=True)
+    srt_path = os.path.join(job_temp_dir, "subtitles_vi.srt")
+    
+    if not os.path.exists(srt_path) and job.get("segments"):
+        from services.transcriber import Transcriber
+        Transcriber.generate_srt(job["segments"], srt_path)
+
     if not os.path.exists(srt_path):
         return JSONResponse(status_code=404, content={"error": "File SRT không tồn tại"})
         

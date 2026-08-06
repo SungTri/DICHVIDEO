@@ -415,14 +415,14 @@ class VideoProcessor:
                     crop_w = width * (w_pct / 100)
                     crop_h = height * (h_pct / 100)
                     max_intensity = int(min(crop_w, crop_h) / 2.1)
-                    intensity = min(requested_intensity, max(1, max_intensity))
+                    intensity = min(requested_intensity, max(1, max_intensity), 12)
                     
                     v_base = f"[vbase{i}]"
                     v_orig = f"[vblur_orig{i}]"
                     v_blurred = f"[vblurred{i}]"
                     v_out = f"[vpre{i}]"
                     
-                    chroma_intensity = min(intensity, 16)
+                    chroma_intensity = min(intensity, 10)
                     blur_filter += (
                         f"{last_v_out}split{v_base}{v_orig};"
                         f"{v_orig}crop=iw*{w_pct/100}:ih*{h_pct/100}:iw*{x_pct/100}:ih*{y_pct/100},boxblur={intensity}:1:{chroma_intensity}:1{v_blurred};"

@@ -85,10 +85,10 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
             if isinstance(item, dict) and "index" in item and "text" in item
         }
 
-    def _call_gemini(self, input_data, json_module, urllib_request, GEMINI_API_KEY, from_lang="en", context_prompt=None):
+    def _call_gemini(self, input_data, json_module, urllib_request, GEMINI_API_KEY, from_lang="en", context_prompt=None, model_name="gemini-flash-latest"):
         """Gọi Gemini API cho một batch nhỏ."""
         prompt = self._build_prompt(input_data, json_module, from_lang, context_prompt)
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
         req_payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"responseMimeType": "application/json"}
@@ -196,6 +196,17 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
         # Xây dựng danh sách các API khả dụng theo thứ tự ưu tiên
         api_providers = []
         
+        if GEMINI_API_KEY and from_lang != "vi":
+            g_keys = [k.strip() for k in GEMINI_API_KEY.split(",") if k.strip()]
+            g_models = ["gemini-flash-latest", "gemini-3.5-flash", "gemini-flash-lite-latest"]
+            for m_name in g_models:
+                for idx, key in enumerate(g_keys):
+                    p_name = f"Gemini {m_name} (Key {idx+1})" if len(g_keys) > 1 else f"Gemini {m_name}"
+                    api_providers.append((
+                        p_name,
+                        lambda batch, fl=from_lang, ctx=context_prompt, k=key, m=m_name: self._call_gemini(batch, json, urllib.request, k, fl, ctx, m)
+                    ))
+
         def add_providers(key_str, name, call_func):
             if not key_str or from_lang == "vi": return
             keys = [k.strip() for k in key_str.split(",") if k.strip()]
@@ -203,7 +214,6 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
                 provider_name = f"{name} (Key {idx+1})" if len(keys) > 1 else name
                 api_providers.append((provider_name, lambda batch, fl=from_lang, ctx=context_prompt, k=key: call_func(batch, json, urllib.request, k, fl, ctx)))
 
-        add_providers(GEMINI_API_KEY, "Gemini", self._call_gemini)
         add_providers(GITHUB_TOKEN, "GitHub GPT-4o-mini", self._call_github)
         add_providers(SAMBANOVA_API_KEY, "SambaNova Llama 3.1", self._call_sambanova)
         add_providers(GROQ_API_KEY, "Groq Llama 3.3", self._call_groq)
@@ -271,7 +281,8 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
                                 print(f"  ⏳ Kẹt Rate Limit ({api_name}), chờ {sleep_time}s rồi thử lại lần {retry_count}/{max_retries}...")
                                 time.sleep(sleep_time)
                             else:
-                                print(f"  ⚠️ Batch {batch_idx + 1}/{len(remaining_batches)} thất bại ({api_name}) sau {max_retries} lần thử lại.")
+                                print(f"  ⚠️ Batch {batch_idx + 1}/{len(remaining_batches)} thất bại ({api_name}) sau {max_retries} lần thử lại do kẹt Rate Limit.")
+                                api_failed = True # Key đã hết Quota hoặc bị chặn, chuyển sang API khác
                                 break
                         else:
                             retry_count += 1
@@ -280,7 +291,7 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
                                 time.sleep(3)
                             else:
                                 print(f"  ❌ Batch {batch_idx + 1}/{len(remaining_batches)} thất bại ({api_name}): {str(e)} sau {max_retries} lần thử lại.")
-                                if "401" in error_msg or "403" in error_msg or "unauthorized" in error_msg or "forbidden" in error_msg or "429" in error_msg or "too many requests" in error_msg:
+                                if "401" in error_msg or "403" in error_msg or "unauthorized" in error_msg or "forbidden" in error_msg:
                                     api_failed = True # Key chết hoặc hết Quota, bỏ qua API này
                                 break
                             
