@@ -92,7 +92,7 @@ class Transcriber:
         try:
             segments_gen, info = model.transcribe(
                 audio_path,
-                beam_size=5,
+                beam_size=1,
                 language=lang,
                 vad_filter=True,
                 vad_parameters=dict(min_silence_duration_ms=200, speech_pad_ms=400)
@@ -116,7 +116,7 @@ class Transcriber:
                 # Chạy lại trên CPU
                 segments_gen, info = model.transcribe(
                     audio_path,
-                    beam_size=5,
+                    beam_size=1,
                     language=lang,
                     vad_filter=True,
                     vad_parameters=dict(min_silence_duration_ms=200, speech_pad_ms=400)
