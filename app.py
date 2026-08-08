@@ -361,7 +361,21 @@ async def process_pipeline_start(job_id: str, url: str | None = None,
         job["segments"] = translated_segments
         job_temp_dir = os.path.join(TEMP_DIR, job_id)
         os.makedirs(job_temp_dir, exist_ok=True)
-        Transcriber.generate_srt(translated_segments, os.path.join(job_temp_dir, "subtitles_vi.srt"))
+        # Tự động tạo Thumbnail Tiếng Việt ban đầu
+        try:
+            video_path = job.get("video_info", {}).get("video_path")
+            if video_path and os.path.exists(video_path):
+                from services.thumbnail_generator import ThumbnailGenerator
+                raw_thumb = os.path.join(job_temp_dir, "raw_thumb.jpg")
+                thumb_path = os.path.join(job_temp_dir, "thumbnail.jpg")
+                ThumbnailGenerator.capture_frame(video_path, raw_thumb, 3.0)
+                title = job.get("export_folder", "") or "PHIM"
+                ep = f"TẬP {job.get('export_episode', '')}" if job.get('export_episode') else ""
+                ThumbnailGenerator.generate_thumbnail(raw_thumb, thumb_path, title, ep)
+                job["thumbnail_url"] = f"/api/download/thumbnail/{job_id}"
+        except Exception as th_err:
+            print(f"[Pipeline] Lỗi tạo thumbnail tự động: {th_err}")
+
         await update_step(job_id, 2, "completed", 100, "Đã dịch xong!")
 
         # ============ CHUYỂN SANG REVIEW WORKSPACE ============
@@ -699,6 +713,112 @@ async def download_srt(job_id: str):
         )
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"Lỗi đọc file SRT: {str(e)}"})
+
+
+@app.get("/api/download/thumbnail/{job_id}")
+async def download_thumbnail(job_id: str):
+    job = jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+        
+    job_temp_dir = os.path.join(TEMP_DIR, job_id)
+    os.makedirs(job_temp_dir, exist_ok=True)
+    thumb_path = os.path.join(job_temp_dir, "thumbnail.jpg")
+    
+    # Nếu chưa có thumbnail.jpg, tự động tạo mới từ video
+    if not os.path.exists(thumb_path):
+        video_path = job.get("video_info", {}).get("video_path")
+        if video_path and os.path.exists(video_path):
+            from services.thumbnail_generator import ThumbnailGenerator
+            raw_thumb = os.path.join(job_temp_dir, "raw_thumb.jpg")
+            ThumbnailGenerator.capture_frame(video_path, raw_thumb, 3.0)
+            
+            title = job.get("export_folder", "") or "PHIM"
+            ep = f"TẬP {job.get('export_episode', '')}" if job.get('export_episode') else ""
+            ThumbnailGenerator.generate_thumbnail(raw_thumb, thumb_path, title, ep)
+
+    if not os.path.exists(thumb_path):
+        return JSONResponse(status_code=404, content={"error": "File Thumbnail không tồn tại"})
+        
+    try:
+        with open(thumb_path, "rb") as f:
+            file_content = f.read()
+            
+        import urllib.parse
+        download_name = f"{job.get('video_info', {}).get('title', 'video')}_Thumbnail.jpg"
+        download_name = "".join(c for c in download_name if c.isalnum() or c in " ._-").strip()
+        encoded_filename = urllib.parse.quote(download_name)
+        
+        headers = {
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+        }
+        return Response(content=file_content, media_type="image/jpeg", headers=headers)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": f"Lỗi đọc file Thumbnail: {str(e)}"})
+
+
+class GenerateThumbnailRequest(BaseModel):
+    job_id: str
+    timestamp: float = 3.0
+    title_text: str = ""
+    episode_text: str = ""
+    style: str = "banner"
+
+
+@app.post("/api/thumbnail/generate")
+async def generate_thumbnail_api(request: GenerateThumbnailRequest):
+    job = jobs.get(request.job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+        
+    job_temp_dir = os.path.join(TEMP_DIR, request.job_id)
+    os.makedirs(job_temp_dir, exist_ok=True)
+    
+    video_path = job.get("video_info", {}).get("video_path")
+    if not video_path or not os.path.exists(video_path):
+        return JSONResponse(status_code=400, content={"error": "File video không tồn tại"})
+        
+    from services.thumbnail_generator import ThumbnailGenerator
+    raw_thumb = os.path.join(job_temp_dir, "raw_thumb.jpg")
+    thumb_path = os.path.join(job_temp_dir, "thumbnail.jpg")
+    
+    ThumbnailGenerator.capture_frame(video_path, raw_thumb, request.timestamp)
+    title = request.title_text or job.get("export_folder", "")
+    ep = request.episode_text or (f"TẬP {job.get('export_episode', '')}" if job.get('export_episode') else "")
+    
+    ThumbnailGenerator.generate_thumbnail(raw_thumb, thumb_path, title, ep, style=request.style)
+    
+    job["thumbnail_url"] = f"/api/download/thumbnail/{request.job_id}?t={int(time.time())}"
+    save_history(jobs)
+    return {"status": "success", "thumbnail_url": job["thumbnail_url"]}
+
+
+@app.post("/api/thumbnail/upload/{job_id}")
+async def upload_custom_thumbnail(job_id: str, file: UploadFile = File(...)):
+    job = jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+        
+    job_temp_dir = os.path.join(TEMP_DIR, job_id)
+    os.makedirs(job_temp_dir, exist_ok=True)
+    
+    custom_input_path = os.path.join(job_temp_dir, "custom_thumb_input.jpg")
+    thumb_path = os.path.join(job_temp_dir, "thumbnail.jpg")
+    
+    with open(custom_input_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+        
+    from services.thumbnail_generator import ThumbnailGenerator
+    title = job.get("export_folder", "") or "PHIM"
+    ep = f"TẬP {job.get('export_episode', '')}" if job.get('export_episode') else ""
+    
+    ThumbnailGenerator.generate_thumbnail(custom_input_path, thumb_path, title, ep)
+    
+    job["thumbnail_url"] = f"/api/download/thumbnail/{job_id}?t={int(time.time())}"
+    save_history(jobs)
+    return {"status": "success", "thumbnail_url": job["thumbnail_url"]}
+
 
 
 @app.post("/api/srt-to-audio")

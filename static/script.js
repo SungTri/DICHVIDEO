@@ -72,6 +72,9 @@ const elements = {
     workspacePreviewBtn: document.getElementById('workspacePreviewBtn'),
     workspaceOriginalBtn: document.getElementById('workspaceOriginalBtn'),
     downloadSrtBtn: document.getElementById('downloadSrtBtn'),
+    downloadThumbBtn: document.getElementById('downloadThumbBtn'),
+    uploadThumbBtn: document.getElementById('uploadThumbBtn'),
+    thumbFileInput: document.getElementById('thumbFileInput'),
     editorRegenAudioBtn: document.getElementById('editorRegenAudioBtn'),
     editorVideoTitle: document.getElementById('editorVideoTitle'),
     editorVideoMeta: document.getElementById('editorVideoMeta'),
@@ -2003,6 +2006,63 @@ if (elements.downloadSrtBtn) {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+    });
+}
+
+// Nút Tải File Thumbnail
+if (elements.downloadThumbBtn) {
+    elements.downloadThumbBtn.addEventListener('click', () => {
+        if (!currentJobId) {
+            alert('Chưa chọn dự án');
+            return;
+        }
+        const a = document.createElement('a');
+        a.href = `/api/download/thumbnail/${currentJobId}`;
+        a.setAttribute('download', '');
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    });
+}
+
+// Nút Upload Ảnh Bìa Gốc để sửa thành Bìa Tiếng Việt
+if (elements.uploadThumbBtn && elements.thumbFileInput) {
+    elements.uploadThumbBtn.addEventListener('click', () => {
+        if (!currentJobId) {
+            alert('Chưa chọn dự án');
+            return;
+        }
+        elements.thumbFileInput.click();
+    });
+
+    elements.thumbFileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file || !currentJobId) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            if (typeof showToast === 'function') {
+                showToast('Đang nạp ảnh bìa gốc & sửa thành Bìa Tiếng Việt...', 'info');
+            }
+            const res = await fetch(`/api/thumbnail/upload/${currentJobId}`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (res.ok) {
+                if (typeof showToast === 'function') {
+                    showToast('🎉 Đã tạo Bìa Tiếng Việt thành công!', 'success');
+                }
+                // Tải luôn file thumbnail vừa sửa về máy
+                elements.downloadThumbBtn.click();
+            } else {
+                alert('Lỗi: ' + (data.error || 'Không thể upload ảnh bìa'));
+            }
+        } catch (err) {
+            alert('Lỗi kết nối upload thumbnail');
+        }
     });
 }
 
