@@ -94,8 +94,9 @@ class Transcriber:
                 audio_path,
                 beam_size=1,
                 language=lang,
+                condition_on_previous_text=False,
                 vad_filter=True,
-                vad_parameters=dict(min_silence_duration_ms=200, speech_pad_ms=400)
+                vad_parameters=dict(threshold=0.35, min_silence_duration_ms=200, speech_pad_ms=400)
             )
             # Thử duyệt qua generator để kích hoạt nạp thư viện CUDA thực tế
             segments_list = list(segments_gen)
@@ -118,8 +119,9 @@ class Transcriber:
                     audio_path,
                     beam_size=1,
                     language=lang,
+                    condition_on_previous_text=False,
                     vad_filter=True,
-                    vad_parameters=dict(min_silence_duration_ms=200, speech_pad_ms=400)
+                    vad_parameters=dict(threshold=0.35, min_silence_duration_ms=200, speech_pad_ms=400)
                 )
                 segments_list = list(segments_gen)
             else:
