@@ -135,10 +135,17 @@ class Transcriber:
             if not text:
                 continue
 
+            # Bỏ qua các đoạn hallucination ảo giác phát sinh sau khi video đã kết thúc
+            if total_duration > 0 and segment.start >= (total_duration - 0.2):
+                print(f"[Transcriber] Bỏ qua đoạn ảo giác sau khi video kết thúc: {segment.start:.1f}s >= {total_duration:.1f}s")
+                break
+
+            seg_end = min(segment.end, total_duration) if total_duration > 0 else segment.end
+
             result.append({
                 'index': len(result) + 1,
                 'start': segment.start,
-                'end': segment.end,
+                'end': seg_end,
                 'text': text
             })
 
