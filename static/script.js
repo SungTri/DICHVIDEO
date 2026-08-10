@@ -75,6 +75,9 @@ const elements = {
     downloadThumbBtn: document.getElementById('downloadThumbBtn'),
     uploadThumbBtn: document.getElementById('uploadThumbBtn'),
     thumbFileInput: document.getElementById('thumbFileInput'),
+    thumbTitleInput: document.getElementById('thumbTitleInput'),
+    thumbEpInput: document.getElementById('thumbEpInput'),
+    btnRegenThumbText: document.getElementById('btnRegenThumbText'),
     editorRegenAudioBtn: document.getElementById('editorRegenAudioBtn'),
     editorVideoTitle: document.getElementById('editorVideoTitle'),
     editorVideoMeta: document.getElementById('editorVideoMeta'),
@@ -2062,6 +2065,47 @@ if (elements.uploadThumbBtn && elements.thumbFileInput) {
             }
         } catch (err) {
             alert('Lỗi kết nối upload thumbnail');
+        }
+    });
+}
+
+// Nút Cập nhật Bìa Thumbnail với Tên Mới
+if (elements.btnRegenThumbText) {
+    elements.btnRegenThumbText.addEventListener('click', async () => {
+        if (!currentJobId) {
+            alert('Chưa chọn dự án');
+            return;
+        }
+        const customTitle = elements.thumbTitleInput ? elements.thumbTitleInput.value.trim() : '';
+        const customEp = elements.thumbEpInput ? elements.thumbEpInput.value.trim() : '';
+
+        try {
+            if (typeof showToast === 'function') {
+                showToast('Đang vẽ Tên Phim mới lên Bìa Thumbnail...', 'info');
+            }
+            const res = await fetch('/api/thumbnail/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    job_id: currentJobId,
+                    timestamp: 3.0,
+                    title_text: customTitle,
+                    episode_text: customEp,
+                    style: 'banner'
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                if (typeof showToast === 'function') {
+                    showToast('🎉 Đã tạo Bìa với tên mới thành công!', 'success');
+                }
+                // Tự động tải file Thumbnail mới vừa vẽ về máy
+                elements.downloadThumbBtn.click();
+            } else {
+                alert('Lỗi: ' + (data.error || 'Không thể cập nhật thumbnail'));
+            }
+        } catch (err) {
+            alert('Lỗi kết nối tạo thumbnail');
         }
     });
 }
