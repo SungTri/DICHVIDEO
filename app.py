@@ -828,6 +828,7 @@ async def generate_standalone_thumbnail(
     title_text: str = Form(""),
     episode_text: str = Form(""),
     sub_title_text: str = Form(""),
+    style: str = Form("match_original"),
     timestamp: float = Form(3.0)
 ):
     """API tạo thumbnail độc lập từ file ảnh hoặc video người dùng tải lên trực tiếp."""
@@ -857,7 +858,8 @@ async def generate_standalone_thumbnail(
         output_thumb_path,
         title_text=title_text,
         episode_text=episode_text,
-        sub_title_text=sub_title_text
+        sub_title_text=sub_title_text,
+        style=style
     )
     
     import urllib.parse

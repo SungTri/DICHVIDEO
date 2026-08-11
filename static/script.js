@@ -83,6 +83,7 @@ const elements = {
     stThumbTitle: document.getElementById('stThumbTitle'),
     stThumbEp: document.getElementById('stThumbEp'),
     stThumbSub: document.getElementById('stThumbSub'),
+    stThumbStyle: document.getElementById('stThumbStyle'),
     stThumbTime: document.getElementById('stThumbTime'),
     btnGenerateStThumb: document.getElementById('btnGenerateStThumb'),
     editorRegenAudioBtn: document.getElementById('editorRegenAudioBtn'),
@@ -2147,6 +2148,7 @@ if (elements.btnGenerateStThumb && elements.stThumbFile) {
         formData.append('title_text', titleVal);
         formData.append('episode_text', epVal);
         formData.append('sub_title_text', subVal);
+        formData.append('style', elements.stThumbStyle ? elements.stThumbStyle.value : 'match_original');
         formData.append('timestamp', elements.stThumbTime ? (parseFloat(elements.stThumbTime.value) || 3.0) : 3.0);
 
         try {
