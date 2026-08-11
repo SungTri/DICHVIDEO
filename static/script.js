@@ -2170,6 +2170,12 @@ if (elements.btnCleanThumbText && elements.stThumbFile) {
             if (res.ok) {
                 interactiveThumbState.clean_id = data.clean_id;
                 if (elements.thumbCleanedImg) {
+                    elements.thumbCleanedImg.onload = () => {
+                        const wrapper = document.getElementById('thumbCanvasWrapper');
+                        if (wrapper && elements.thumbCleanedImg.naturalWidth && elements.thumbCleanedImg.naturalHeight) {
+                            wrapper.style.aspectRatio = `${elements.thumbCleanedImg.naturalWidth} / ${elements.thumbCleanedImg.naturalHeight}`;
+                        }
+                    };
                     elements.thumbCleanedImg.src = data.cleaned_url + '?t=' + Date.now();
                 }
                 if (elements.thumbStudioContainer) {

@@ -915,7 +915,7 @@ async def clean_thumbnail_api(
     return {
         "status": "success",
         "clean_id": temp_id,
-        "cleaned_url": f"/downloads/standalone_clean_{temp_id}/cleaned.jpg"
+        "cleaned_url": f"/temp/standalone_clean_{temp_id}/cleaned.jpg"
     }
 
 
@@ -1503,6 +1503,7 @@ async def cleanup_data(request: dict):
 
 # Serve downloads directory để frontend play video nguồn
 app.mount("/downloads", StaticFiles(directory=DOWNLOADS_DIR), name="downloads")
+app.mount("/temp", StaticFiles(directory=TEMP_DIR), name="temp")
 
 # Serve static files (frontend)
 static_dir = os.path.join(BASE_DIR, "static")
