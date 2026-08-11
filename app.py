@@ -820,6 +820,55 @@ async def upload_custom_thumbnail(job_id: str, file: UploadFile = File(...)):
     return {"status": "success", "thumbnail_url": job["thumbnail_url"]}
 
 
+from fastapi import Form
+
+@app.post("/api/thumbnail/standalone")
+async def generate_standalone_thumbnail(
+    file: UploadFile = File(...),
+    title_text: str = Form(""),
+    episode_text: str = Form(""),
+    timestamp: float = Form(3.0)
+):
+    """API tạo thumbnail độc lập từ file ảnh hoặc video người dùng tải lên trực tiếp."""
+    temp_id = str(uuid.uuid4())[:8]
+    st_dir = os.path.join(TEMP_DIR, "standalone_thumb_" + temp_id)
+    os.makedirs(st_dir, exist_ok=True)
+    
+    filename = file.filename or "input_file"
+    file_ext = os.path.splitext(filename)[1].lower()
+    input_save_path = os.path.join(st_dir, "input" + file_ext)
+    
+    with open(input_save_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+        
+    from services.thumbnail_generator import ThumbnailGenerator
+    raw_thumb_path = os.path.join(st_dir, "raw.jpg")
+    output_thumb_path = os.path.join(st_dir, "thumbnail.jpg")
+    
+    if file_ext in [".mp4", ".mkv", ".mov", ".avi", ".webm", ".flv"]:
+        ThumbnailGenerator.capture_frame(input_save_path, raw_thumb_path, timestamp)
+    else:
+        raw_thumb_path = input_save_path
+
+    ThumbnailGenerator.generate_thumbnail(raw_thumb_path, output_thumb_path, title_text, episode_text)
+    
+    import urllib.parse
+    download_name = f"Thumbnail_{title_text or 'Phim'}.jpg"
+    download_name = "".join(c for c in download_name if c.isalnum() or c in " ._-").strip()
+    encoded_filename = urllib.parse.quote(download_name)
+    
+    headers = {
+        "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+    }
+    
+    with open(output_thumb_path, "rb") as f:
+        content = f.read()
+        
+    return Response(content=content, media_type="image/jpeg", headers=headers)
+
+
+
 
 @app.post("/api/srt-to-audio")
 async def srt_to_audio(request: SrtToAudioRequest):

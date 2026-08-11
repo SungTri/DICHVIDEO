@@ -78,6 +78,11 @@ const elements = {
     thumbTitleInput: document.getElementById('thumbTitleInput'),
     thumbEpInput: document.getElementById('thumbEpInput'),
     btnRegenThumbText: document.getElementById('btnRegenThumbText'),
+    stThumbFile: document.getElementById('stThumbFile'),
+    stThumbTitle: document.getElementById('stThumbTitle'),
+    stThumbEp: document.getElementById('stThumbEp'),
+    stThumbTime: document.getElementById('stThumbTime'),
+    btnGenerateStThumb: document.getElementById('btnGenerateStThumb'),
     editorRegenAudioBtn: document.getElementById('editorRegenAudioBtn'),
     editorVideoTitle: document.getElementById('editorVideoTitle'),
     editorVideoMeta: document.getElementById('editorVideoMeta'),
@@ -2106,6 +2111,53 @@ if (elements.btnRegenThumbText) {
             }
         } catch (err) {
             alert('Lỗi kết nối tạo thumbnail');
+        }
+    });
+}
+
+// Xử lý Công Cụ Tạo Thumbnail Độc Lập (Tab Tạo Thumbnail)
+if (elements.btnGenerateStThumb && elements.stThumbFile) {
+    elements.btnGenerateStThumb.addEventListener('click', async () => {
+        const file = elements.stThumbFile.files[0];
+        if (!file) {
+            alert('Vui lòng chọn 1 file ảnh (.jpg/.png) hoặc video (.mp4)');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('title_text', elements.stThumbTitle ? elements.stThumbTitle.value.trim() : '');
+        formData.append('episode_text', elements.stThumbEp ? elements.stThumbEp.value.trim() : '');
+        formData.append('timestamp', elements.stThumbTime ? (parseFloat(elements.stThumbTime.value) || 3.0) : 3.0);
+
+        try {
+            if (typeof showToast === 'function') {
+                showToast('Đang tạo & biên tập Bìa Tiếng Việt...', 'info');
+            }
+            const res = await fetch('/api/thumbnail/standalone', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Thumbnail_${elements.stThumbTitle ? elements.stThumbTitle.value.trim() : 'Phim'}.jpg`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                if (typeof showToast === 'function') {
+                    showToast('🎉 Đã tải Bìa Tiếng Việt thành công!', 'success');
+                }
+            } else {
+                const data = await res.json();
+                alert('Lỗi: ' + (data.error || 'Không thể tạo thumbnail'));
+            }
+        } catch (err) {
+            alert('Lỗi kết nối tạo thumbnail độc lập');
         }
     });
 }
