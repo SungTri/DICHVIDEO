@@ -1,6 +1,6 @@
 """
 Service tạo và chỉnh sửa ảnh bìa Thumbnail Tiếng Việt tự động & Tương tác kéo thả.
-Hỗ trợ AI Tẩy Sạch 100% Chữ Trung Quốc (Gaussian Feather Composite) & Giữ 100% HD khuôn mặt nhân vật.
+Hỗ trợ Xuất Phông Nền HD Nguyên Bản 100% (Không mờ, không lem vệt màu) & Kéo thả vị trí chữ tùy biến.
 100% Cục bộ bằng Pillow (PIL) & FFmpeg - Tốn 0 Token API.
 """
 import os
@@ -48,30 +48,11 @@ class ThumbnailGenerator:
 
     @staticmethod
     def auto_clean_text(image_input_path: str, output_clean_path: str) -> str:
-        """Tẩy sạch 100% chữ Trung Quốc trên ảnh bằng Gaussian Feather Composite, mịn màng không vết đốm xám."""
+        """Xuất phông nền HD sắc nét 100% (Tuyệt đối không lem màu, không vệt mờ)."""
         os.makedirs(os.path.dirname(output_clean_path), exist_ok=True)
-        img = Image.open(image_input_path).convert("RGB")
-        width, height = img.size
-
-        # 1. Tạo bức ảnh nền mờ mịn Gaussian 35px
-        blurred = img.filter(ImageFilter.GaussianBlur(radius=35))
-
-        # 2. Tạo mặt nạ quét vùng chữ (Top-left & Bottom) - Giữ 100% khuôn mặt nhân vật ở giữa (Y: 20% -> 58%)
-        mask = Image.new("L", (width, height), 0)
-        draw = ImageDraw.Draw(mask)
-
-        # Vùng chữ đỏ Top-Left
-        draw.rectangle([0, 0, int(width * 0.44), int(height * 0.20)], fill=255)
-        # Vùng chữ Cyan & Vàng Hàng Dưới
-        draw.rectangle([0, int(height * 0.58), width, height], fill=255)
-
-        # Làm mềm viền mặt nạ 20px để hòa trộn mượt mà tự nhiên 100%
-        mask = mask.filter(ImageFilter.GaussianBlur(radius=20))
-
-        # 3. Phủ mượt vùng chữ, giữ nguyên 100% nét căng khuôn mặt nhân vật ở giữa
-        cleaned = Image.composite(blurred, img, mask)
-        cleaned.save(output_clean_path, "JPEG", quality=98)
-        print(f"[ThumbnailGenerator] AI đã tẩy chữ mịn màng Gaussian Composite: {output_clean_path}")
+        im = Image.open(image_input_path).convert("RGB")
+        im.save(output_clean_path, "JPEG", quality=98)
+        print(f"[ThumbnailGenerator] Đã xuất phông nền HD sắc nét 100%: {output_clean_path}")
         return output_clean_path
 
     @staticmethod
@@ -151,7 +132,7 @@ class ThumbnailGenerator:
         text_cards: list
     ) -> str:
         """
-        Vẽ các thẻ chữ Tiếng Việt theo vị trí kéo thả (X%, Y%) của người dùng lên phông nền đã tẩy chữ.
+        Vẽ các thẻ chữ Tiếng Việt theo vị trí kéo thả (X%, Y%) của người dùng lên phông nền HD.
         """
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         img = Image.open(image_input_path).convert("RGBA")
@@ -195,7 +176,7 @@ class ThumbnailGenerator:
                 pad_x = max(12, int(width * 0.015))
                 pad_y = max(6, int(height * 0.008))
                 box = [pos_x - pad_x, pos_y - pad_y, pos_x + w_t + pad_x, pos_y + h_t + pad_y * 2]
-                draw.rectangle(box, fill=(0, 0, 0, 200))
+                draw.rectangle(box, fill=(0, 0, 0, 220))
 
             stroke_w = max(5, int(font_size_px * 0.12))
             cls.draw_bordered_text(
