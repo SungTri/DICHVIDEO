@@ -11,7 +11,7 @@ from config import FFMPEG_PATH
 
 
 class ThumbnailGenerator:
-    """Tạo và biên tập ảnh Thumbnail chuẩn 1080p sang trọng, chuyên nghiệp."""
+    """Tạo và biên tập ảnh Thumbnail chuẩn 1080p sang trọng, thay thế chính xác vị trí chữ Trung - Việt."""
 
     @staticmethod
     def capture_frame(video_path: str, output_path: str, timestamp_sec: float = 3.0) -> str:
@@ -50,7 +50,7 @@ class ThumbnailGenerator:
 
     @staticmethod
     def get_default_font(font_size: int):
-        """Lấy font chữ hệ thống hỗ trợ Unicode Tiếng Việt tốt nhất."""
+        """Lấy font chữ hệ thống hỗ trợ Unicode Tiếng Việt đậm nét nhất."""
         font_paths = [
             "C:\\Windows\\Fonts\\arialbd.ttf",      # Arial Bold
             "C:\\Windows\\Fonts\\segoeuib.ttf",     # Segoe UI Bold
@@ -67,24 +67,37 @@ class ThumbnailGenerator:
         return ImageFont.load_default()
 
     @classmethod
-    def wrap_text(cls, text: str, font, max_width: int):
-        """Ngắt dòng văn bản tự động để không bị tràn lề."""
-        words = text.split()
-        lines = []
-        current_line = []
+    def draw_bordered_text(
+        cls,
+        draw: ImageDraw.ImageDraw,
+        xy: tuple,
+        text: str,
+        font: ImageFont.ImageFont,
+        fill_color: tuple,
+        outline_color: tuple = (0, 0, 0, 255),
+        stroke_width: int = 6,
+        shadow_offset: tuple = (4, 4)
+    ):
+        x, y = xy
+        if shadow_offset:
+            sx, sy = shadow_offset
+            draw.text((x + sx, y + sy), text, font=font, fill=(0, 0, 0, 240))
 
-        for word in words:
-            test_line = ' '.join(current_line + [word])
-            bbox = font.getbbox(test_line)
-            w = bbox[2] - bbox[0]
-            if w <= max_width or not current_line:
-                current_line.append(word)
-            else:
-                lines.append(' '.join(current_line))
-                current_line = [word]
-        if current_line:
-            lines.append(' '.join(current_line))
-        return lines
+        try:
+            draw.text(
+                (x, y),
+                text,
+                font=font,
+                fill=fill_color,
+                stroke_width=stroke_width,
+                stroke_fill=outline_color
+            )
+        except Exception:
+            for dx in range(-stroke_width, stroke_width + 1):
+                for dy in range(-stroke_width, stroke_width + 1):
+                    if dx * dx + dy * dy <= stroke_width * stroke_width:
+                        draw.text((x + dx, y + dy), text, font=font, fill=outline_color)
+            draw.text((x, y), text, font=font, fill=fill_color)
 
     @classmethod
     def generate_thumbnail(
@@ -93,10 +106,11 @@ class ThumbnailGenerator:
         output_path: str,
         title_text: str = "",
         episode_text: str = "",
-        style: str = "banner"
+        sub_title_text: str = "",
+        style: str = "match_original"
     ) -> str:
         """
-        Tạo ảnh Thumbnail Tiếng Việt nghệ thuật chuyên nghiệp chuẩn YouTube từ ảnh gốc/khung hình đã chụp.
+        Tạo ảnh Thumbnail Tiếng Việt nghệ thuật thay thế chính xác vị trí chữ Trung Quốc.
         """
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         if not os.path.exists(image_input_path):
@@ -105,116 +119,122 @@ class ThumbnailGenerator:
         img = Image.open(image_input_path).convert("RGBA")
         width, height = img.size
 
-        # Nếu style = raw, chỉ lưu lại ảnh sạch
         if style == "raw":
             img.convert("RGB").save(output_path, "JPEG", quality=95)
             return output_path
 
-        full_title = title_text.strip().upper() if title_text else ""
-        full_ep = episode_text.strip().upper() if episode_text else ""
-
-        # 1. Tạo dải bóng mờ đen bán trong suốt ở CẢ HAI PHÍA (Phía Trên & Phía Dưới)
-        # Giúp che hoàn toàn 100% chữ Trung Quốc cũ ở cả 2 góc!
-        overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-        overlay_draw = ImageDraw.Draw(overlay)
-
-        # Dải mờ phía trên (che chữ Trung Quốc góc trên ~22% chiều cao)
-        top_h = int(height * 0.22)
-        for y in range(top_h):
-            ratio = y / top_h
-            alpha = int(230 * (1.0 - math.sin(ratio * math.pi / 2)))
-            overlay_draw.line([(0, y), (width, y)], fill=(0, 0, 0, min(alpha, 220)))
-
-        # Dải mờ phía dưới (che kín 2 dòng chữ Trung Quốc phía dưới ~35% chiều cao)
-        bot_h = int(height * 0.36)
-        for i in range(bot_h):
-            y = height - bot_h + i
-            ratio = i / bot_h
-            alpha = int(245 * math.sin(ratio * math.pi / 2))
-            overlay_draw.line([(0, y), (width, y)], fill=(0, 0, 0, min(alpha, 240)))
-
-        img = Image.alpha_composite(img, overlay)
         draw = ImageDraw.Draw(img)
 
-        max_text_w = int(width * 0.90)
+        line1 = episode_text.strip().upper() if episode_text else ""
+        line2 = title_text.strip().upper() if title_text else ""
+        line3 = sub_title_text.strip().upper() if sub_title_text else ""
 
-        # 2. Vẽ Tên Phim Tiếng Việt (Full Title) ngắt dòng đẹp mắt ở dải mờ phía dưới
-        if full_title:
-            # Tự động tính cỡ font phù hợp với độ dài chữ
-            font_size = int(width * 0.052)
-            if len(full_title) > 35:
-                font_size = int(width * 0.042)
-            if len(full_title) > 55:
-                font_size = int(width * 0.035)
+        # Nếu line2 dài mà line3 trống, tự động tách line2 thành 2 dòng (Hàng Cyan + Hàng Yellow)
+        if line2 and not line3:
+            if "," in line2:
+                parts = line2.split(",", 1)
+                line2 = parts[0].strip()
+                line3 = parts[1].strip()
+            elif " - " in line2:
+                parts = line2.split(" - ", 1)
+                line2 = parts[0].strip()
+                line3 = parts[1].strip()
+            else:
+                words = line2.split()
+                if len(words) >= 6:
+                    mid = len(words) // 2
+                    line2 = " ".join(words[:mid])
+                    line3 = " ".join(words[mid:])
 
-            font_title = cls.get_default_font(max(font_size, 22))
-            lines = cls.wrap_text(full_title, font_title, max_text_w)
+        # -------------------------------------------------------------
+        # 1. DÒNG 1 (GÓC TRÊN BÊN TRÁI - CHỮ ĐỎ VIỀN ĐEN TRONG NGOẶC 【...】)
+        # -------------------------------------------------------------
+        if line1:
+            if not line1.startswith("【") and not line1.startswith("["):
+                line1_text = f"【{line1}】"
+            else:
+                line1_text = line1
 
-            # Tối đa 2-3 dòng
-            if len(lines) > 3:
-                font_size = int(font_size * 0.82)
-                font_title = cls.get_default_font(max(font_size, 18))
-                lines = cls.wrap_text(full_title, font_title, max_text_w)
+            font_size_1 = max(int(width * 0.048), 24)
+            font1 = cls.get_default_font(font_size_1)
 
-            # Tính chiều cao tổng các dòng chữ
-            line_heights = []
-            for line in lines:
-                bbox = font_title.getbbox(line)
-                line_heights.append(bbox[3] - bbox[1])
-            total_text_h = sum(line_heights) + int(font_size * 0.3) * (len(lines) - 1)
+            # Vị trí góc trên bên trái (Top Left)
+            pos_x1 = int(width * 0.05)
+            pos_y1 = int(height * 0.04)
 
-            # Vị trí vẽ ở dải mờ phía dưới
-            start_y = height - bot_h + int((bot_h - total_text_h) / 2)
-            if start_y < height - bot_h:
-                start_y = height - bot_h + int(height * 0.03)
+            cls.draw_bordered_text(
+                draw,
+                (pos_x1, pos_y1),
+                line1_text,
+                font1,
+                fill_color=(255, 51, 51, 255),  # Màu Đỏ Tươi #FF3333
+                outline_color=(0, 0, 0, 255),
+                stroke_width=max(4, int(font_size_1 * 0.09))
+            )
 
-            current_y = start_y
-            outline_w = max(3, int(font_size * 0.08))
+        # -------------------------------------------------------------
+        # 2. DÒNG 2 (HÀNG DƯỚI 1 - CHỮ XANH CYAN #00E5FF VIỀN ĐEN DÀY)
+        # -------------------------------------------------------------
+        if line2:
+            max_w = int(width * 0.94)
+            font_size_2 = int(width * 0.054)
 
-            for line in lines:
-                bbox = font_title.getbbox(line)
-                l_w = bbox[2] - bbox[0]
-                l_h = bbox[3] - bbox[1]
-                l_x = (width - l_w) // 2
+            font2 = cls.get_default_font(font_size_2)
+            bbox2 = font2.getbbox(line2)
+            w2 = bbox2[2] - bbox2[0]
 
-                # Vẽ bóng đổ (Drop Shadow)
-                draw.text((l_x + 4, current_y + 4), line, font=font_title, fill=(0, 0, 0, 245))
+            # Co font nếu vượt quá chiều rộng ảnh
+            if w2 > max_w:
+                font_size_2 = int(font_size_2 * (max_w / w2))
+                font2 = cls.get_default_font(max(font_size_2, 18))
+                bbox2 = font2.getbbox(line2)
+                w2 = bbox2[2] - bbox2[0]
 
-                # Vẽ viền đen dày (Thick 8-direction outline)
-                for dx in range(-outline_w, outline_w + 1):
-                    for dy in range(-outline_w, outline_w + 1):
-                        if dx * dx + dy * dy <= outline_w * outline_w:
-                            draw.text((l_x + dx, current_y + dy), line, font=font_title, fill=(0, 0, 0, 255))
+            pos_x2 = (width - w2) // 2
+            pos_y2 = int(height * 0.67) if line3 else int(height * 0.74)
 
-                # Chữ chính màu Vàng Gold Hoàng Gia (#FFD700)
-                draw.text((l_x, current_y), line, font=font_title, fill=(255, 215, 0, 255))
-                current_y += l_h + int(font_size * 0.3)
+            cls.draw_bordered_text(
+                draw,
+                (pos_x2, pos_y2),
+                line2,
+                font2,
+                fill_color=(0, 229, 255, 255),  # Màu Xanh Cyan #00E5FF
+                outline_color=(0, 0, 0, 255),
+                stroke_width=max(6, int(font_size_2 * 0.11))
+            )
 
-        # 3. Vẽ Huy Hiệu Tập Phim (Episode Badge: [ FULL ] hoặc [ TẬP 01 ])
-        if full_ep:
-            ep_font_size = max(int(width * 0.035), 18)
-            font_ep = cls.get_default_font(ep_font_size)
+        # -------------------------------------------------------------
+        # 3. DÒNG 3 (HÀNG DƯỚI 2 - CHỮ VÀNG #FFEA00 VIỀN ĐEN DÀY)
+        # -------------------------------------------------------------
+        if line3:
+            max_w = int(width * 0.94)
+            font_size_3 = int(width * 0.050)
 
-            ep_text = f"{full_ep}"
-            bbox_ep = font_ep.getbbox(ep_text)
-            ep_w = bbox_ep[2] - bbox_ep[0]
-            ep_h = bbox_ep[3] - bbox_ep[1]
+            font3 = cls.get_default_font(font_size_3)
+            bbox3 = font3.getbbox(line3)
+            w3 = bbox3[2] - bbox3[0]
 
-            # Vẽ Huy hiệu Đỏ Nổi bật ở góc trên bên trái
-            pad_x = int(width * 0.02)
-            pad_y = int(height * 0.01)
-            b_x1 = int(width * 0.04)
-            b_y1 = int(height * 0.04)
-            b_x2 = b_x1 + ep_w + pad_x * 2
-            b_y2 = b_y1 + ep_h + pad_y * 2
+            if w3 > max_w:
+                font_size_3 = int(font_size_3 * (max_w / w3))
+                font3 = cls.get_default_font(max(font_size_3, 18))
+                bbox3 = font3.getbbox(line3)
+                w3 = bbox3[2] - bbox3[0]
 
-            # Vẽ khung màu đỏ bo tròn (#DC2626)
-            draw.rounded_rectangle([b_x1, b_y1, b_x2, b_y2], radius=8, fill=(220, 38, 38, 240), outline=(255, 255, 255, 255), width=2)
-            # Chữ màu Trắng Nổi
-            draw.text((b_x1 + pad_x, b_y1 + pad_y), ep_text, font=font_ep, fill=(255, 255, 255, 255))
+            pos_x3 = (width - w3) // 2
+            pos_y3 = int(height * 0.81)
+
+            cls.draw_bordered_text(
+                draw,
+                (pos_x3, pos_y3),
+                line3,
+                font3,
+                fill_color=(255, 234, 0, 255),  # Màu Vàng Nổi #FFEA00
+                outline_color=(0, 0, 0, 255),
+                stroke_width=max(6, int(font_size_3 * 0.11))
+            )
 
         # Lưu ảnh đầu ra
         final_img = img.convert("RGB")
         final_img.save(output_path, "JPEG", quality=95)
-        print(f"[ThumbnailGenerator] Đã tạo ảnh bìa nâng cấp thành công: {output_path}")
+        print(f"[ThumbnailGenerator] Đã tạo ảnh bìa thay thế vị trí chuẩn Trung-Việt: {output_path}")
         return output_path

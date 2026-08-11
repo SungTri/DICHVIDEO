@@ -82,6 +82,7 @@ const elements = {
     stThumbFile: document.getElementById('stThumbFile'),
     stThumbTitle: document.getElementById('stThumbTitle'),
     stThumbEp: document.getElementById('stThumbEp'),
+    stThumbSub: document.getElementById('stThumbSub'),
     stThumbTime: document.getElementById('stThumbTime'),
     btnGenerateStThumb: document.getElementById('btnGenerateStThumb'),
     editorRegenAudioBtn: document.getElementById('editorRegenAudioBtn'),
@@ -2133,9 +2134,10 @@ if (elements.btnGenerateStThumb && elements.stThumbFile) {
 
         const titleVal = elements.stThumbTitle ? elements.stThumbTitle.value.trim() : '';
         const epVal = elements.stThumbEp ? elements.stThumbEp.value.trim() : '';
+        const subVal = elements.stThumbSub ? elements.stThumbSub.value.trim() : '';
 
-        if (!titleVal && !epVal) {
-            alert('⚠️ Vui lòng gõ Tên Phim Tiếng Việt (Ví dụ: Thiếu Gia Giả Nghèo) vào ô số 2 trước khi bấm tạo bìa!');
+        if (!titleVal && !epVal && !subVal) {
+            alert('⚠️ Vui lòng nhập thông tin Tên Phim Tiếng Việt trước khi bấm xuất bìa!');
             if (elements.stThumbTitle) elements.stThumbTitle.focus();
             return;
         }
@@ -2144,6 +2146,7 @@ if (elements.btnGenerateStThumb && elements.stThumbFile) {
         formData.append('file', file);
         formData.append('title_text', titleVal);
         formData.append('episode_text', epVal);
+        formData.append('sub_title_text', subVal);
         formData.append('timestamp', elements.stThumbTime ? (parseFloat(elements.stThumbTime.value) || 3.0) : 3.0);
 
         try {

@@ -827,6 +827,7 @@ async def generate_standalone_thumbnail(
     file: UploadFile = File(...),
     title_text: str = Form(""),
     episode_text: str = Form(""),
+    sub_title_text: str = Form(""),
     timestamp: float = Form(3.0)
 ):
     """API tạo thumbnail độc lập từ file ảnh hoặc video người dùng tải lên trực tiếp."""
@@ -851,7 +852,13 @@ async def generate_standalone_thumbnail(
     else:
         raw_thumb_path = input_save_path
 
-    ThumbnailGenerator.generate_thumbnail(raw_thumb_path, output_thumb_path, title_text, episode_text)
+    ThumbnailGenerator.generate_thumbnail(
+        raw_thumb_path,
+        output_thumb_path,
+        title_text=title_text,
+        episode_text=episode_text,
+        sub_title_text=sub_title_text
+    )
     
     import urllib.parse
     download_name = f"Thumbnail_{title_text or 'Phim'}.jpg"
