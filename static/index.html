@@ -47,10 +47,7 @@
                     <span class="nav-icon">🎞️</span>
                     <span>Trình chỉnh sửa</span>
                 </a>
-                <a href="#" class="nav-item" data-tab="thumbnail">
-                    <span class="nav-icon">🖼️</span>
-                    <span>Tạo Thumbnail</span>
-                </a>
+
                 <a href="#" class="nav-item" data-tab="srt">
                     <span class="nav-icon">📢</span>
                     <span>SRT sang Audio</span>
@@ -946,62 +943,7 @@ Nội dung cần lồng tiếng..."></textarea>
                 </div>
             </div>
 
-            <!-- TAB 7: STANDALONE THUMBNAIL MAKER -->
-            <div id="thumbnailTab" class="tab-content hidden">
-                <div class="card srt-card" style="max-width: 960px; margin: 0 auto;">
-                    <div class="card-header">
-                        <h2>🖼️ Studio Biên Tập & Kéo Thả Vị Trí Chữ Thumbnail Pro</h2>
-                        <p class="card-description">BƯỚC 1: Tải ảnh lên -> AI tự động tẩy sạch chữ gốc | BƯỚC 2: Thêm & Kéo thả thẻ chữ Tiếng Việt tùy ý bằng chuột | BƯỚC 3: Xuất bìa sắc nét 1080p.</p>
-                    </div>
-                    <div class="card-body" style="display: flex; flex-direction: column; gap: 20px;">
-                        
-                        <!-- BƯỚC 1: NẠP FILE & TẨY CHỮ -->
-                        <div class="style-section-card" style="background: var(--bg-hover); border-color: var(--border);">
-                            <h3 style="margin-bottom: 10px; color: var(--primary);">📥 BƯỚC 1: NẠP FILE NGUỒN & AI TẨY CHỮ GỐC</h3>
-                            <div style="display: flex; gap: 12px; align-items: center;">
-                                <input type="file" id="stThumbFile" accept="image/*,video/*" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text);">
-                                <input type="number" id="stThumbTime" value="3.0" step="0.5" min="0" title="Mốc giây chụp nếu nạp Video" placeholder="Giây" style="width: 80px; height: 42px; border-radius: 6px; border: 1px solid var(--border); padding: 8px; background: var(--bg-card); color: var(--text);">
-                                <button id="btnCleanThumbText" class="btn-regen-audio" style="height: 42px; padding: 0 20px; background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; border: none; font-weight: 600; cursor: pointer;">
-                                    <span>🪄 AI Tẩy Sạch Chữ Gốc</span>
-                                </button>
-                            </div>
-                        </div>
 
-                        <!-- BƯỚC 2 & 3: CANVAS KÉO THẢ VỊ TRÍ CHỮ TRỰC QUAN -->
-                        <div id="thumbStudioContainer" class="style-section-card hidden" style="display: flex; flex-direction: column; gap: 16px;">
-                            <h3 style="color: #22c55e;">🎯 BƯỚC 2: KÉO THẢ THẺ CHỮ VÀO VỊ TRÍ TÙY Ý TRÊN ẢNH</h3>
-                            
-                            <!-- INTERACTIVE PREVIEW CANVAS BOX -->
-                            <div id="thumbCanvasWrapper" style="position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; overflow: hidden; border: 2px solid var(--primary); user-select: none;">
-                                <img id="thumbCleanedImg" src="" style="width: 100%; height: 100%; object-fit: contain; pointer-events: none;">
-                                <div id="thumbDragOverlayContainer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: auto;">
-                                    <!-- Dynamic Draggable Text Overlays rendered by script.js -->
-                                </div>
-                            </div>
-
-                            <!-- CONTROLS: ADD TEXT CARD -->
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-                                <h4 style="font-weight: 600;">Danh sách thẻ chữ Tiếng Việt:</h4>
-                                <button id="btnAddTextCard" class="btn-paste-sub" style="padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
-                                    <span>➕ Thêm Thẻ Chữ Mới</span>
-                                </button>
-                            </div>
-
-                            <!-- LIST OF TEXT CARDS -->
-                            <div id="textCardsList" style="display: flex; flex-direction: column; gap: 10px;">
-                                <!-- Dynamic Card Controls rendered by script.js -->
-                            </div>
-
-                            <!-- BƯỚC 3: XUẤT ẢNH -->
-                            <button id="btnExportInteractiveThumb" class="btn-generate-main" style="width: 100%; margin-top: 15px; background: linear-gradient(135deg, #22c55e, #15803d);">
-                                <span class="btn-icon">✨</span>
-                                <span class="btn-text">BƯỚC 3: Xuất & Tải Bìa Tiếng Việt Ngay (1080p)</span>
-                            </button>
-                        </div>
-
-                    </div>
-                </div>
-            </div>
 
             <!-- TAB 6: HISTORY TAB -->
             <div id="historyTab" class="tab-content hidden">

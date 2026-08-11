@@ -15,7 +15,7 @@ const elements = {
     resultTab: document.getElementById('resultTab'),
     errorTab: document.getElementById('errorTab'),
     historyTab: document.getElementById('historyTab'),
-    thumbnailTab: document.getElementById('thumbnailTab'),
+
     srtTab: document.getElementById('srtTab'),
     settingsTab: document.getElementById('settingsTab'),
     pageTitle: document.getElementById('pageTitle'),
@@ -173,7 +173,7 @@ function isValidUrl(string) {
 // ============================================================
 
 function showTab(tabId) {
-    const tabs = ['homeTab', 'progressTab', 'workspaceTab', 'resultTab', 'errorTab', 'historyTab', 'thumbnailTab', 'srtTab', 'settingsTab'];
+    const tabs = ['homeTab', 'progressTab', 'workspaceTab', 'resultTab', 'errorTab', 'historyTab', 'srtTab', 'settingsTab'];
     
     tabs.forEach(id => {
         const el = elements[id];
@@ -202,10 +202,6 @@ function showTab(tabId) {
         elements.pageTitle.textContent = 'Trình chỉnh sửa';
         const editorNav = document.querySelector('.nav-item[data-tab="editor"]');
         if (editorNav) editorNav.classList.add('active');
-    } else if (tabId === 'thumbnailTab') {
-        elements.pageTitle.textContent = 'Tạo Thumbnail';
-        const thumbNav = document.querySelector('.nav-item[data-tab="thumbnail"]');
-        if (thumbNav) thumbNav.classList.add('active');
     } else if (tabId === 'srtTab') {
         elements.pageTitle.textContent = 'SRT sang Audio';
         const srtNav = document.querySelector('.nav-item[data-tab="srt"]');
