@@ -2131,10 +2131,19 @@ if (elements.btnGenerateStThumb && elements.stThumbFile) {
             return;
         }
 
+        const titleVal = elements.stThumbTitle ? elements.stThumbTitle.value.trim() : '';
+        const epVal = elements.stThumbEp ? elements.stThumbEp.value.trim() : '';
+
+        if (!titleVal && !epVal) {
+            alert('⚠️ Vui lòng gõ Tên Phim Tiếng Việt (Ví dụ: Thiếu Gia Giả Nghèo) vào ô số 2 trước khi bấm tạo bìa!');
+            if (elements.stThumbTitle) elements.stThumbTitle.focus();
+            return;
+        }
+
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('title_text', elements.stThumbTitle ? elements.stThumbTitle.value.trim() : '');
-        formData.append('episode_text', elements.stThumbEp ? elements.stThumbEp.value.trim() : '');
+        formData.append('title_text', titleVal);
+        formData.append('episode_text', epVal);
         formData.append('timestamp', elements.stThumbTime ? (parseFloat(elements.stThumbTime.value) || 3.0) : 3.0);
 
         try {
