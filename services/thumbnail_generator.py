@@ -1,17 +1,19 @@
 """
-Service tạo và chỉnh sửa ảnh bìa Thumbnail Tiếng Việt tự động.
-Hỗ trợ đa dạng phong cách (Bìa Đoản Kịch 3 Màu, Bìa Ngôn Tình Vàng Gold 3D, Ảnh Sạch).
-100% Cục bộ bằng FFmpeg & Pillow (PIL) - Tốn 0 Token API.
+Service tạo và chỉnh sửa ảnh bìa Thumbnail Tiếng Việt tự động & Tương tác kéo thả.
+Hỗ trợ AI Tẩy sạch chữ Trung Quốc (Inpainting) & Kéo thả vị trí chữ tùy biến 100%.
+100% Cục bộ bằng OpenCV & Pillow (PIL) - Tốn 0 Token API.
 """
 import os
 import math
 import subprocess
+import cv2
+import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from config import FFMPEG_PATH
 
 
 class ThumbnailGenerator:
-    """Tạo và biên tập ảnh Thumbnail chuẩn 1080p sang trọng, đa phong cách."""
+    """Tạo và biên tập ảnh Thumbnail chuẩn 1080p sang trọng, đa phong cách & Kéo thả vị trí."""
 
     @staticmethod
     def capture_frame(video_path: str, output_path: str, timestamp_sec: float = 3.0) -> str:
@@ -43,6 +45,34 @@ class ThumbnailGenerator:
             subprocess.run(cmd_fallback, capture_output=True, check=False)
 
         return output_path
+
+    @staticmethod
+    def auto_clean_text(image_input_path: str, output_clean_path: str) -> str:
+        """Tự động phát hiện và tẩy sạch chữ trên ảnh gốc bằng AI OpenCV Inpainting (0 Token API)."""
+        os.makedirs(os.path.dirname(output_clean_path), exist_ok=True)
+        img = cv2.imread(image_input_path)
+        if img is None:
+            im = Image.open(image_input_path).convert("RGB")
+            im.save(output_clean_path, "JPEG", quality=95)
+            return output_clean_path
+
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        
+        # 1. Phát hiện các vùng nét chữ (Morphological Gradient & Otsu Threshold)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+        morph = cv2.morphologyEx(gray, cv2.MORPH_GRADIENT, kernel)
+        _, thresh = cv2.threshold(morph, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+        # 2. Nối nét chữ & Tạo mặt nạ che phủ chữ (Dilate Mask)
+        kernel_connect = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 3))
+        connected = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel_connect)
+        mask = cv2.dilate(connected, kernel, iterations=2)
+
+        # 3. Tẩy xóa chữ và vẽ bù phông nền (Inpainting)
+        cleaned = cv2.inpaint(img, mask, inpaintRadius=7, flags=cv2.INPAINT_TELEA)
+
+        cv2.imwrite(output_clean_path, cleaned)
+        return output_clean_path
 
     @staticmethod
     def get_default_font(font_size: int):
@@ -112,6 +142,68 @@ class ThumbnailGenerator:
         if current_line:
             lines.append(' '.join(current_line))
         return lines
+
+    @classmethod
+    def render_interactive_cards(
+        cls,
+        image_input_path: str,
+        output_path: str,
+        text_cards: list
+    ) -> str:
+        """
+        Vẽ các thẻ chữ Tiếng Việt theo vị trí kéo thả (X%, Y%) trực quan của người dùng.
+        """
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        img = Image.open(image_input_path).convert("RGBA")
+        width, height = img.size
+        draw = ImageDraw.Draw(img)
+
+        for card in text_cards:
+            text = card.get("text", "").strip()
+            if not text:
+                continue
+
+            # Thêm ngoặc nếu là dòng top red bracket
+            if card.get("is_bracket", False):
+                if not (text.startswith("【") or text.startswith("[")):
+                    text = f"【{text}】"
+
+            font_size_px = int(card.get("font_size", 48) * (width / 1000.0))
+            font_size_px = max(font_size_px, 18)
+            font = cls.get_default_font(font_size_px)
+
+            # Tọa độ X%, Y%
+            x_pct = float(card.get("x_percent", 5.0))
+            y_pct = float(card.get("y_percent", 5.0))
+
+            pos_x = int(width * (x_pct / 100.0))
+            pos_y = int(height * (y_pct / 100.0))
+
+            color_hex = card.get("color", "#FFEA00")
+            color_hex = color_hex.lstrip('#')
+            if len(color_hex) == 6:
+                r = int(color_hex[0:2], 16)
+                g = int(color_hex[2:4], 16)
+                b = int(color_hex[4:6], 16)
+                fill_color = (r, g, b, 255)
+            else:
+                fill_color = (255, 234, 0, 255)
+
+            stroke_w = max(4, int(font_size_px * 0.10))
+            cls.draw_bordered_text(
+                draw,
+                (pos_x, pos_y),
+                text,
+                font,
+                fill_color=fill_color,
+                outline_color=(0, 0, 0, 255),
+                stroke_width=stroke_w
+            )
+
+        final_img = img.convert("RGB")
+        final_img.save(output_path, "JPEG", quality=95)
+        print(f"[ThumbnailGenerator] Đã vẽ thẻ chữ kéo thả thành công: {output_path}")
+        return output_path
 
     @classmethod
     def generate_thumbnail(

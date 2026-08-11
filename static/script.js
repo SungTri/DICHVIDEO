@@ -80,12 +80,14 @@ const elements = {
     thumbEpInput: document.getElementById('thumbEpInput'),
     btnRegenThumbText: document.getElementById('btnRegenThumbText'),
     stThumbFile: document.getElementById('stThumbFile'),
-    stThumbTitle: document.getElementById('stThumbTitle'),
-    stThumbEp: document.getElementById('stThumbEp'),
-    stThumbSub: document.getElementById('stThumbSub'),
-    stThumbStyle: document.getElementById('stThumbStyle'),
     stThumbTime: document.getElementById('stThumbTime'),
-    btnGenerateStThumb: document.getElementById('btnGenerateStThumb'),
+    btnCleanThumbText: document.getElementById('btnCleanThumbText'),
+    thumbStudioContainer: document.getElementById('thumbStudioContainer'),
+    thumbCleanedImg: document.getElementById('thumbCleanedImg'),
+    thumbDragOverlayContainer: document.getElementById('thumbDragOverlayContainer'),
+    btnAddTextCard: document.getElementById('btnAddTextCard'),
+    textCardsList: document.getElementById('textCardsList'),
+    btnExportInteractiveThumb: document.getElementById('btnExportInteractiveThumb'),
     editorRegenAudioBtn: document.getElementById('editorRegenAudioBtn'),
     editorVideoTitle: document.getElementById('editorVideoTitle'),
     editorVideoMeta: document.getElementById('editorVideoMeta'),
@@ -2124,40 +2126,257 @@ if (elements.btnRegenThumbText) {
     });
 }
 
-// Xử lý Công Cụ Tạo Thumbnail Độc Lập (Tab Tạo Thumbnail)
-if (elements.btnGenerateStThumb && elements.stThumbFile) {
-    elements.btnGenerateStThumb.addEventListener('click', async () => {
+// ============================================================
+// LOGIC THUMBNAIL STUDIO PRO (AI INPAINTING + DRAG & DROP CARDS)
+// ============================================================
+
+window.interactiveThumbState = {
+    clean_id: null,
+    nextCardId: 4,
+    cards: [
+        { id: 1, text: 'TRUYỆN NGỌT KẾT THÚC', color: '#ff3333', font_size: 44, x_percent: 5, y_percent: 4, is_bracket: true },
+        { id: 2, text: 'HỒI SINH TRỞ LẠI GẶP PHẢI ĐẠI VẬN', color: '#00e5ff', font_size: 50, x_percent: 8, y_percent: 67, is_bracket: false },
+        { id: 3, text: 'TỈNH LẠI SAU TAI NẠN XE, TÔI CHỈ MUỐN LY HÔN', color: '#ffea00', font_size: 46, x_percent: 6, y_percent: 81, is_bracket: false }
+    ]
+};
+
+// BƯỚC 1: Nạp File & AI Tẩy Chữ Gốc (Inpainting)
+if (elements.btnCleanThumbText && elements.stThumbFile) {
+    elements.btnCleanThumbText.addEventListener('click', async () => {
         const file = elements.stThumbFile.files[0];
         if (!file) {
-            alert('Vui lòng chọn 1 file ảnh (.jpg/.png) hoặc video (.mp4)');
-            return;
-        }
-
-        const titleVal = elements.stThumbTitle ? elements.stThumbTitle.value.trim() : '';
-        const epVal = elements.stThumbEp ? elements.stThumbEp.value.trim() : '';
-        const subVal = elements.stThumbSub ? elements.stThumbSub.value.trim() : '';
-
-        if (!titleVal && !epVal && !subVal) {
-            alert('⚠️ Vui lòng nhập thông tin Tên Phim Tiếng Việt trước khi bấm xuất bìa!');
-            if (elements.stThumbTitle) elements.stThumbTitle.focus();
+            alert('⚠️ Vui lòng chọn 1 file ảnh (.jpg/.png) hoặc video (.mp4) trước!');
             return;
         }
 
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('title_text', titleVal);
-        formData.append('episode_text', epVal);
-        formData.append('sub_title_text', subVal);
-        formData.append('style', elements.stThumbStyle ? elements.stThumbStyle.value : 'match_original');
         formData.append('timestamp', elements.stThumbTime ? (parseFloat(elements.stThumbTime.value) || 3.0) : 3.0);
 
         try {
+            elements.btnCleanThumbText.disabled = true;
+            elements.btnCleanThumbText.innerHTML = '<span>⏳ AI Đang Tẩy Chữ...</span>';
+
             if (typeof showToast === 'function') {
-                showToast('Đang tạo & biên tập Bìa Tiếng Việt...', 'info');
+                showToast('🪄 AI đang quét và tẩy sạch chữ Trung Quốc gốc...', 'info');
             }
-            const res = await fetch('/api/thumbnail/standalone', {
+
+            const res = await fetch('/api/thumbnail/clean', {
                 method: 'POST',
                 body: formData
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                interactiveThumbState.clean_id = data.clean_id;
+                if (elements.thumbCleanedImg) {
+                    elements.thumbCleanedImg.src = data.cleaned_url + '?t=' + Date.now();
+                }
+                if (elements.thumbStudioContainer) {
+                    elements.thumbStudioContainer.classList.remove('hidden');
+                }
+                renderInteractiveThumbStudio();
+                if (typeof showToast === 'function') {
+                    showToast('🎉 AI đã tẩy chữ xong! Dùng chuột kéo thả vị trí chữ tùy ý phía dưới.', 'success');
+                }
+            } else {
+                alert('Lỗi tẩy chữ: ' + (data.error || data.detail || 'Không thể xử lý'));
+            }
+        } catch (err) {
+            alert('Lỗi kết nối AI tẩy chữ');
+        } finally {
+            elements.btnCleanThumbText.disabled = false;
+            elements.btnCleanThumbText.innerHTML = '<span>🪄 AI Tẩy Sạch Chữ Gốc</span>';
+        }
+    });
+}
+
+// BƯỚC 2: Render các Thẻ Chữ & Canvas Kéo Thả Trực Quan
+function renderInteractiveThumbStudio() {
+    if (!elements.textCardsList || !elements.thumbDragOverlayContainer) return;
+
+    elements.textCardsList.innerHTML = '';
+    elements.thumbDragOverlayContainer.innerHTML = '';
+
+    interactiveThumbState.cards.forEach((card, index) => {
+        // 1. Render Card Control UI (Danh sách các thẻ chữ)
+        const cardDiv = document.createElement('div');
+        cardDiv.className = 'style-section-card';
+        cardDiv.style.background = 'var(--bg-card)';
+        cardDiv.style.border = '1px solid var(--border)';
+        cardDiv.style.padding = '12px';
+
+        cardDiv.innerHTML = `
+            <div style="display: flex; gap: 10px; align-items: center; width: 100%;">
+                <span style="font-weight: bold; color: var(--primary);">Thẻ ${index + 1}:</span>
+                <input type="text" value="${card.text.replace(/"/g, '&quot;')}" class="card-text-input" style="flex: 1; height: 38px; border-radius: 6px; border: 1px solid var(--border); padding: 6px 10px; background: var(--bg-hover); color: var(--text); font-weight: bold;" placeholder="Gõ chữ Tiếng Việt...">
+                <input type="color" value="${card.color}" class="card-color-input" style="width: 40px; height: 38px; border: none; background: transparent; cursor: pointer;" title="Chọn màu chữ">
+                <input type="range" min="20" max="80" value="${card.font_size}" class="card-size-input" style="width: 100px;" title="Cỡ chữ">
+                <button class="btn-card-delete" style="background: transparent; border: none; color: #ef4444; font-size: 1.2rem; cursor: pointer; padding: 0 5px;" title="Xóa thẻ chữ">🗑️</button>
+            </div>
+        `;
+
+        // Bind events cho UI Card
+        const textInput = cardDiv.querySelector('.card-text-input');
+        const colorInput = cardDiv.querySelector('.card-color-input');
+        const sizeInput = cardDiv.querySelector('.card-size-input');
+        const delBtn = cardDiv.querySelector('.btn-card-delete');
+
+        textInput.addEventListener('input', (e) => {
+            card.text = e.target.value;
+            updateOverlayText(card.id, card.text, card.is_bracket);
+        });
+
+        colorInput.addEventListener('input', (e) => {
+            card.color = e.target.value;
+            updateOverlayStyle(card.id, card.color, card.font_size);
+        });
+
+        sizeInput.addEventListener('input', (e) => {
+            card.font_size = parseInt(e.target.value);
+            updateOverlayStyle(card.id, card.color, card.font_size);
+        });
+
+        delBtn.addEventListener('click', () => {
+            interactiveThumbState.cards = interactiveThumbState.cards.filter(c => c.id !== card.id);
+            renderInteractiveThumbStudio();
+        });
+
+        elements.textCardsList.appendChild(cardDiv);
+
+        // 2. Render Overlay trên Canvas Kéo Thả
+        const overlay = document.createElement('div');
+        overlay.id = `thumbOverlay_${card.id}`;
+        overlay.className = 'thumb-drag-item';
+        overlay.style.position = 'absolute';
+        overlay.style.left = card.x_percent + '%';
+        overlay.style.top = card.y_percent + '%';
+        overlay.style.color = card.color;
+        overlay.style.fontSize = (card.font_size * 0.35) + 'px';
+        overlay.style.fontWeight = 'bold';
+        overlay.style.fontFamily = 'sans-serif';
+        overlay.style.textShadow = '2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 3px 6px rgba(0,0,0,0.8)';
+        overlay.style.cursor = 'move';
+        overlay.style.whiteSpace = 'nowrap';
+        overlay.style.padding = '4px 8px';
+        overlay.style.border = '1px dashed rgba(255,255,255,0.4)';
+        overlay.style.borderRadius = '4px';
+        overlay.style.background = 'rgba(0,0,0,0.2)';
+        overlay.style.zIndex = '10';
+
+        let displayText = card.text;
+        if (card.is_bracket && !displayText.startsWith('【')) {
+            displayText = `【${displayText}】`;
+        }
+        overlay.textContent = displayText || 'Gõ chữ...';
+
+        // Dragging Logic
+        let isDragging = false;
+        let startX = 0, startY = 0;
+        let startLeftPct = card.x_percent, startTopPct = card.y_percent;
+
+        overlay.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeftPct = card.x_percent;
+            startTopPct = card.y_percent;
+            overlay.style.borderColor = '#22c55e';
+            e.preventDefault();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const container = elements.thumbStudioContainer;
+            if (!container) return;
+
+            const wrapper = document.getElementById('thumbCanvasWrapper');
+            if (!wrapper) return;
+
+            const rect = wrapper.getBoundingClientRect();
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+
+            const deltaXPct = (deltaX / rect.width) * 100;
+            const deltaYPct = (deltaY / rect.height) * 100;
+
+            let newX = Math.max(0, Math.min(90, startLeftPct + deltaXPct));
+            let newY = Math.max(0, Math.min(90, startTopPct + deltaYPct));
+
+            card.x_percent = parseFloat(newX.toFixed(2));
+            card.y_percent = parseFloat(newY.toFixed(2));
+
+            overlay.style.left = card.x_percent + '%';
+            overlay.style.top = card.y_percent + '%';
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                overlay.style.borderColor = 'rgba(255,255,255,0.4)';
+            }
+        });
+
+        elements.thumbDragOverlayContainer.appendChild(overlay);
+    });
+}
+
+function updateOverlayText(id, text, is_bracket) {
+    const el = document.getElementById(`thumbOverlay_${id}`);
+    if (el) {
+        let displayText = text;
+        if (is_bracket && !displayText.startsWith('【')) {
+            displayText = `【${displayText}】`;
+        }
+        el.textContent = displayText || 'Gõ chữ...';
+    }
+}
+
+function updateOverlayStyle(id, color, size) {
+    const el = document.getElementById(`thumbOverlay_${id}`);
+    if (el) {
+        el.style.color = color;
+        el.style.fontSize = (size * 0.35) + 'px';
+    }
+}
+
+// Nút Thêm Thẻ Chữ Mới
+if (elements.btnAddTextCard) {
+    elements.btnAddTextCard.addEventListener('click', () => {
+        const newId = interactiveThumbState.nextCardId++;
+        interactiveThumbState.cards.push({
+            id: newId,
+            text: 'DÒNG CHỮ MỚI',
+            color: '#00e5ff',
+            font_size: 48,
+            x_percent: 15,
+            y_percent: 45,
+            is_bracket: false
+        });
+        renderInteractiveThumbStudio();
+    });
+}
+
+// BƯỚC 3: Xuất Bìa Tiếng Việt 1080p
+if (elements.btnExportInteractiveThumb) {
+    elements.btnExportInteractiveThumb.addEventListener('click', async () => {
+        if (!interactiveThumbState.clean_id) {
+            alert('⚠️ Vui lòng nạp ảnh & AI tẩy chữ trước!');
+            return;
+        }
+
+        try {
+            if (typeof showToast === 'function') {
+                showToast('✨ Đang xuất Bìa Tiếng Việt sắc nét theo đúng vị trí kéo thả...', 'info');
+            }
+
+            const res = await fetch('/api/thumbnail/export-interactive', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clean_id: interactiveThumbState.clean_id,
+                    cards: interactiveThumbState.cards
+                })
             });
 
             if (res.ok) {
@@ -2165,7 +2384,7 @@ if (elements.btnGenerateStThumb && elements.stThumbFile) {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `Thumbnail_${elements.stThumbTitle ? elements.stThumbTitle.value.trim() : 'Phim'}.jpg`;
+                a.download = `Thumbnail_KeoTha_1080p.jpg`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -2175,10 +2394,10 @@ if (elements.btnGenerateStThumb && elements.stThumbFile) {
                 }
             } else {
                 const data = await res.json();
-                alert('Lỗi: ' + (data.error || 'Không thể tạo thumbnail'));
+                alert('Lỗi xuất bìa: ' + (data.detail || data.error || 'Không thể tạo file'));
             }
         } catch (err) {
-            alert('Lỗi kết nối tạo thumbnail độc lập');
+            alert('Lỗi kết nối xuất bìa kéo thả');
         }
     });
 }

@@ -948,50 +948,57 @@ Nội dung cần lồng tiếng..."></textarea>
 
             <!-- TAB 7: STANDALONE THUMBNAIL MAKER -->
             <div id="thumbnailTab" class="tab-content hidden">
-                <div class="card srt-card" style="max-width: 800px; margin: 0 auto;">
+                <div class="card srt-card" style="max-width: 960px; margin: 0 auto;">
                     <div class="card-header">
-                        <h2>🖼️ Công Cụ Sửa Bìa Phim Tiếng Việt (Thay Thế 100% Chữ Trung Quốc)</h2>
-                        <p class="card-description">Nạp Ảnh Bìa Gốc -> Nhập 3 dòng chữ Tiếng Việt -> Thay thế chính xác vị trí chữ Đỏ, chữ Xanh Cyan và chữ Vàng cũ!</p>
+                        <h2>🖼️ Studio Biên Tập & Kéo Thả Vị Trí Chữ Thumbnail Pro</h2>
+                        <p class="card-description">BƯỚC 1: Tải ảnh lên -> AI tự động tẩy sạch chữ gốc | BƯỚC 2: Thêm & Kéo thả thẻ chữ Tiếng Việt tùy ý bằng chuột | BƯỚC 3: Xuất bìa sắc nét 1080p.</p>
                     </div>
-                    <div class="card-body" style="display: flex; flex-direction: column; gap: 16px;">
-                        <div class="stylist-group">
-                            <label style="font-weight: 600; margin-bottom: 6px; display: block;">1. TẢI FILE NGUỒN (File Ảnh `.jpg`/`.png` hoặc Video `.mp4`)</label>
-                            <input type="file" id="stThumbFile" accept="image/*,video/*" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text);">
-                        </div>
+                    <div class="card-body" style="display: flex; flex-direction: column; gap: 20px;">
                         
-                        <div class="stylist-group">
-                            <label style="font-weight: 600; margin-bottom: 6px; display: block;">🎨 CHỌN PHONG CÁCH BÌA (STYLE PRESET)</label>
-                            <select id="stThumbStyle" style="width: 100%; height: 42px; border-radius: 6px; border: 1px solid var(--border); padding: 8px 12px; background: var(--bg-card); color: var(--text); outline: none;">
-                                <option value="match_original" selected>💥 Thay thế chữ 3 màu Trung-Việt (Đỏ / Xanh Cyan / Vàng)</option>
-                                <option value="banner">👑 Dải Mờ Bóng Đêm + Chữ Vàng Gold 3D (Chuẩn YouTube)</option>
-                                <option value="raw">🧹 Lấy khung hình gốc sạch (Không chèn chữ)</option>
-                            </select>
-                        </div>
-                        
-                        <div class="stylist-group">
-                            <label style="font-weight: 600; margin-bottom: 6px; display: block; color: #ff4a4a;">2. DÒNG 1 (KHUNG ĐỎ GÓC TRÊN - VD: TRUYỆN NGỌT KẾT THÚC)</label>
-                            <input type="text" id="stThumbEp" placeholder="Góc trên bên trái (Ví dụ: TRUYỆN NGỌT KẾT THÚC hoặc FULL)" style="width: 100%; height: 42px; border-radius: 6px; border: 1px solid #ff4a4a; padding: 8px 12px; background: var(--bg-card); color: #ff4a4a; font-weight: bold; outline: none;">
+                        <!-- BƯỚC 1: NẠP FILE & TẨY CHỮ -->
+                        <div class="style-section-card" style="background: var(--bg-hover); border-color: var(--border);">
+                            <h3 style="margin-bottom: 10px; color: var(--primary);">📥 BƯỚC 1: NẠP FILE NGUỒN & AI TẨY CHỮ GỐC</h3>
+                            <div style="display: flex; gap: 12px; align-items: center;">
+                                <input type="file" id="stThumbFile" accept="image/*,video/*" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text);">
+                                <input type="number" id="stThumbTime" value="3.0" step="0.5" min="0" title="Mốc giây chụp nếu nạp Video" placeholder="Giây" style="width: 80px; height: 42px; border-radius: 6px; border: 1px solid var(--border); padding: 8px; background: var(--bg-card); color: var(--text);">
+                                <button id="btnCleanThumbText" class="btn-regen-audio" style="height: 42px; padding: 0 20px; background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; border: none; font-weight: 600; cursor: pointer;">
+                                    <span>🪄 AI Tẩy Sạch Chữ Gốc</span>
+                                </button>
+                            </div>
                         </div>
 
-                        <div class="stylist-group">
-                            <label style="font-weight: 600; margin-bottom: 6px; display: block; color: #00e5ff;">3. DÒNG 2 (HÀNG DƯỚI 1 - CHỮ XANH CYAN)</label>
-                            <input type="text" id="stThumbTitle" placeholder="Hàng chữ Xanh Cyan (Ví dụ: HỒI SINH TRỞ LẠI GẶP PHẢI ĐẠI VẬN)" style="width: 100%; height: 42px; border-radius: 6px; border: 1px solid #00e5ff; padding: 8px 12px; background: var(--bg-card); color: #00e5ff; font-weight: bold; outline: none;">
+                        <!-- BƯỚC 2 & 3: CANVAS KÉO THẢ VỊ TRÍ CHỮ TRỰC QUAN -->
+                        <div id="thumbStudioContainer" class="style-section-card hidden" style="display: flex; flex-direction: column; gap: 16px;">
+                            <h3 style="color: #22c55e;">🎯 BƯỚC 2: KÉO THẢ THẺ CHỮ VÀO VỊ TRÍ TÙY Ý TRÊN ẢNH</h3>
+                            
+                            <!-- INTERACTIVE PREVIEW CANVAS BOX -->
+                            <div id="thumbCanvasWrapper" style="position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; overflow: hidden; border: 2px solid var(--primary); user-select: none;">
+                                <img id="thumbCleanedImg" src="" style="width: 100%; height: 100%; object-fit: contain; pointer-events: none;">
+                                <div id="thumbDragOverlayContainer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: auto;">
+                                    <!-- Dynamic Draggable Text Overlays rendered by script.js -->
+                                </div>
+                            </div>
+
+                            <!-- CONTROLS: ADD TEXT CARD -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                                <h4 style="font-weight: 600;">Danh sách thẻ chữ Tiếng Việt:</h4>
+                                <button id="btnAddTextCard" class="btn-paste-sub" style="padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                    <span>➕ Thêm Thẻ Chữ Mới</span>
+                                </button>
+                            </div>
+
+                            <!-- LIST OF TEXT CARDS -->
+                            <div id="textCardsList" style="display: flex; flex-direction: column; gap: 10px;">
+                                <!-- Dynamic Card Controls rendered by script.js -->
+                            </div>
+
+                            <!-- BƯỚC 3: XUẤT ẢNH -->
+                            <button id="btnExportInteractiveThumb" class="btn-generate-main" style="width: 100%; margin-top: 15px; background: linear-gradient(135deg, #22c55e, #15803d);">
+                                <span class="btn-icon">✨</span>
+                                <span class="btn-text">BƯỚC 3: Xuất & Tải Bìa Tiếng Việt Ngay (1080p)</span>
+                            </button>
                         </div>
 
-                        <div class="stylist-group">
-                            <label style="font-weight: 600; margin-bottom: 6px; display: block; color: #ffea00;">4. DÒNG 3 (HÀNG DƯỚI 2 - CHỮ VÀNG)</label>
-                            <input type="text" id="stThumbSub" placeholder="Hàng chữ Vàng (Ví dụ: TỈNH LẠI SAU TAI NẠN XE, TÔI CHỈ MUỐN LY HÔN)" style="width: 100%; height: 42px; border-radius: 6px; border: 1px solid #ffea00; padding: 8px 12px; background: var(--bg-card); color: #ffea00; font-weight: bold; outline: none;">
-                        </div>
-
-                        <div class="stylist-group">
-                            <label style="font-weight: 600; margin-bottom: 6px; display: block;">5. MỐC GIÂY CHỤP (Nếu là Video)</label>
-                            <input type="number" id="stThumbTime" value="3.0" step="0.5" min="0" style="width: 100%; height: 42px; border-radius: 6px; border: 1px solid var(--border); padding: 8px 12px; background: var(--bg-card); color: var(--text); outline: none;">
-                        </div>
-
-                        <button id="btnGenerateStThumb" class="btn-generate-main" style="width: 100%; margin-top: 10px; background: linear-gradient(135deg, #f59e0b, #d97706);">
-                            <span class="btn-icon">✨</span>
-                            <span class="btn-text">Xuất Bìa Tiếng Việt Thay Thế Chữ Trung Ngay</span>
-                        </button>
                     </div>
                 </div>
             </div>
@@ -1219,7 +1226,7 @@ Nội dung cần lồng tiếng..."></textarea>
 
         </main>
     </div>
-    <script src="/static/script.js?v=10.0"></script>
+    <script src="/static/script.js?v=11.0"></script>
 </body>
 
 </html>

@@ -877,6 +877,73 @@ async def generate_standalone_thumbnail(
     return Response(content=content, media_type="image/jpeg", headers=headers)
 
 
+class InteractiveThumbnailRequest(BaseModel):
+    clean_id: str
+    cards: list = []
+
+
+@app.post("/api/thumbnail/clean")
+async def clean_thumbnail_api(
+    file: UploadFile = File(...),
+    timestamp: float = Form(3.0)
+):
+    """BƯỚC 1: Tải ảnh/video lên -> AI Tẩy Sạch Chữ Gốc (Inpainting) & trả về URL ảnh sạch."""
+    temp_id = str(uuid.uuid4())[:8]
+    st_dir = os.path.join(TEMP_DIR, "standalone_clean_" + temp_id)
+    os.makedirs(st_dir, exist_ok=True)
+
+    filename = file.filename or "input_file"
+    file_ext = os.path.splitext(filename)[1].lower()
+    input_save_path = os.path.join(st_dir, "input" + file_ext)
+
+    with open(input_save_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+
+    from services.thumbnail_generator import ThumbnailGenerator
+    raw_thumb_path = os.path.join(st_dir, "raw.jpg")
+    cleaned_thumb_path = os.path.join(st_dir, "cleaned.jpg")
+
+    if file_ext in [".mp4", ".mkv", ".mov", ".avi", ".webm", ".flv"]:
+        ThumbnailGenerator.capture_frame(input_save_path, raw_thumb_path, timestamp)
+    else:
+        raw_thumb_path = input_save_path
+
+    # Tẩy sạch chữ Trung Quốc bằng AI OpenCV Inpainting
+    ThumbnailGenerator.auto_clean_text(raw_thumb_path, cleaned_thumb_path)
+
+    return {
+        "status": "success",
+        "clean_id": temp_id,
+        "cleaned_url": f"/downloads/standalone_clean_{temp_id}/cleaned.jpg"
+    }
+
+
+@app.post("/api/thumbnail/export-interactive")
+async def export_interactive_thumbnail(request: InteractiveThumbnailRequest):
+    """BƯỚC 3: Vẽ các thẻ chữ Tiếng Việt theo vị trí kéo thả (X%, Y%) và tải về ảnh 1080p."""
+    st_dir = os.path.join(TEMP_DIR, "standalone_clean_" + request.clean_id)
+    cleaned_thumb_path = os.path.join(st_dir, "cleaned.jpg")
+
+    if not os.path.exists(cleaned_thumb_path):
+        raise HTTPException(status_code=404, detail="Không tìm thấy ảnh đã tẩy chữ")
+
+    output_thumb_path = os.path.join(st_dir, "final_thumbnail.jpg")
+
+    from services.thumbnail_generator import ThumbnailGenerator
+    ThumbnailGenerator.render_interactive_cards(cleaned_thumb_path, output_thumb_path, request.cards)
+
+    with open(output_thumb_path, "rb") as f:
+        content = f.read()
+
+    import urllib.parse
+    headers = {
+        "Content-Disposition": f"attachment; filename*=UTF-8''{urllib.parse.quote('Thumbnail_BienTap.jpg')}"
+    }
+    return Response(content=content, media_type="image/jpeg", headers=headers)
+
+
+
 
 
 @app.post("/api/srt-to-audio")
