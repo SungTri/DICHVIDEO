@@ -2217,7 +2217,10 @@ function renderInteractiveThumbStudio() {
                 <span style="font-weight: bold; color: var(--primary);">Thẻ ${index + 1}:</span>
                 <input type="text" value="${card.text.replace(/"/g, '&quot;')}" class="card-text-input" style="flex: 1; height: 38px; border-radius: 6px; border: 1px solid var(--border); padding: 6px 10px; background: var(--bg-hover); color: var(--text); font-weight: bold;" placeholder="Gõ chữ Tiếng Việt...">
                 <input type="color" value="${card.color}" class="card-color-input" style="width: 40px; height: 38px; border: none; background: transparent; cursor: pointer;" title="Chọn màu chữ">
-                <input type="range" min="20" max="80" value="${card.font_size}" class="card-size-input" style="width: 100px;" title="Cỡ chữ">
+                <input type="range" min="20" max="80" value="${card.font_size}" class="card-size-input" style="width: 90px;" title="Cỡ chữ">
+                <label style="font-size: 0.8rem; display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;" title="Bật khung nền tối che chữ cũ">
+                    <input type="checkbox" ${card.bg_box ? 'checked' : ''} class="card-box-checkbox"> Che nền
+                </label>
                 <button class="btn-card-delete" style="background: transparent; border: none; color: #ef4444; font-size: 1.2rem; cursor: pointer; padding: 0 5px;" title="Xóa thẻ chữ">🗑️</button>
             </div>
         `;
@@ -2226,6 +2229,7 @@ function renderInteractiveThumbStudio() {
         const textInput = cardDiv.querySelector('.card-text-input');
         const colorInput = cardDiv.querySelector('.card-color-input');
         const sizeInput = cardDiv.querySelector('.card-size-input');
+        const boxCheckbox = cardDiv.querySelector('.card-box-checkbox');
         const delBtn = cardDiv.querySelector('.btn-card-delete');
 
         textInput.addEventListener('input', (e) => {
@@ -2235,13 +2239,20 @@ function renderInteractiveThumbStudio() {
 
         colorInput.addEventListener('input', (e) => {
             card.color = e.target.value;
-            updateOverlayStyle(card.id, card.color, card.font_size);
+            updateOverlayStyle(card.id, card.color, card.font_size, card.bg_box);
         });
 
         sizeInput.addEventListener('input', (e) => {
             card.font_size = parseInt(e.target.value);
-            updateOverlayStyle(card.id, card.color, card.font_size);
+            updateOverlayStyle(card.id, card.color, card.font_size, card.bg_box);
         });
+
+        if (boxCheckbox) {
+            boxCheckbox.addEventListener('change', (e) => {
+                card.bg_box = e.target.checked;
+                updateOverlayStyle(card.id, card.color, card.font_size, card.bg_box);
+            });
+        }
 
         delBtn.addEventListener('click', () => {
             interactiveThumbState.cards = interactiveThumbState.cards.filter(c => c.id !== card.id);
@@ -2338,11 +2349,16 @@ function updateOverlayText(id, text, is_bracket) {
     }
 }
 
-function updateOverlayStyle(id, color, size) {
+function updateOverlayStyle(id, color, size, bg_box) {
     const el = document.getElementById(`thumbOverlay_${id}`);
     if (el) {
         el.style.color = color;
         el.style.fontSize = (size * 0.35) + 'px';
+        if (bg_box) {
+            el.style.background = 'rgba(0, 0, 0, 0.85)';
+        } else {
+            el.style.background = 'rgba(0, 0, 0, 0.2)';
+        }
     }
 }
 

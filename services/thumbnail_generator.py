@@ -1,6 +1,6 @@
 """
 Service tạo và chỉnh sửa ảnh bìa Thumbnail Tiếng Việt tự động & Tương tác kéo thả.
-Hỗ trợ AI Tẩy sạch chữ Trung Quốc (Inpainting) & Kéo thả vị trí chữ tùy biến 100%.
+Hỗ trợ Giữ ảnh HD sắc nét 100% (Không mờ mặt nhân vật) & Kéo thả vị trí chữ tùy biến 100%.
 100% Cục bộ bằng OpenCV & Pillow (PIL) - Tốn 0 Token API.
 """
 import os
@@ -48,30 +48,10 @@ class ThumbnailGenerator:
 
     @staticmethod
     def auto_clean_text(image_input_path: str, output_clean_path: str) -> str:
-        """Tự động phát hiện và tẩy sạch chữ trên ảnh gốc bằng AI OpenCV Inpainting (0 Token API)."""
+        """Giữ nguyên ảnh phông nền HD sắc nét 100%, tránh làm mờ khuôn mặt nhân vật."""
         os.makedirs(os.path.dirname(output_clean_path), exist_ok=True)
-        img = cv2.imread(image_input_path)
-        if img is None:
-            im = Image.open(image_input_path).convert("RGB")
-            im.save(output_clean_path, "JPEG", quality=95)
-            return output_clean_path
-
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        
-        # 1. Phát hiện các vùng nét chữ (Morphological Gradient & Otsu Threshold)
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-        morph = cv2.morphologyEx(gray, cv2.MORPH_GRADIENT, kernel)
-        _, thresh = cv2.threshold(morph, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-        # 2. Nối nét chữ & Tạo mặt nạ che phủ chữ (Dilate Mask)
-        kernel_connect = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 3))
-        connected = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel_connect)
-        mask = cv2.dilate(connected, kernel, iterations=2)
-
-        # 3. Tẩy xóa chữ và vẽ bù phông nền (Inpainting)
-        cleaned = cv2.inpaint(img, mask, inpaintRadius=7, flags=cv2.INPAINT_TELEA)
-
-        cv2.imwrite(output_clean_path, cleaned)
+        im = Image.open(image_input_path).convert("RGB")
+        im.save(output_clean_path, "JPEG", quality=98)
         return output_clean_path
 
     @staticmethod
@@ -189,7 +169,16 @@ class ThumbnailGenerator:
             else:
                 fill_color = (255, 234, 0, 255)
 
-            stroke_w = max(4, int(font_size_px * 0.10))
+            # Nếu bật khung che chữ cũ
+            if card.get("bg_box", False):
+                bbox = font.getbbox(text)
+                w_t = bbox[2] - bbox[0]
+                h_t = bbox[3] - bbox[1]
+                pad_x, pad_y = 12, 6
+                box = [pos_x - pad_x, pos_y - pad_y, pos_x + w_t + pad_x, pos_y + h_t + pad_y]
+                draw.rectangle(box, fill=(0, 0, 0, 210))
+
+            stroke_w = max(5, int(font_size_px * 0.12))
             cls.draw_bordered_text(
                 draw,
                 (pos_x, pos_y),
@@ -201,7 +190,7 @@ class ThumbnailGenerator:
             )
 
         final_img = img.convert("RGB")
-        final_img.save(output_path, "JPEG", quality=95)
+        final_img.save(output_path, "JPEG", quality=98)
         print(f"[ThumbnailGenerator] Đã vẽ thẻ chữ kéo thả thành công: {output_path}")
         return output_path
 
