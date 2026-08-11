@@ -1,6 +1,6 @@
 """
 Service tạo và chỉnh sửa ảnh bìa Thumbnail Tiếng Việt tự động & Tương tác kéo thả.
-Hỗ trợ Giữ ảnh HD sắc nét 100% (Không mờ mặt nhân vật) & Kéo thả vị trí chữ che sạch chữ cũ 100%.
+Hỗ trợ AI Tẩy sạch 100% chữ Trung Quốc trên ảnh gốc (Bỏ qua khuôn mặt nhân vật) & Kéo thả vị trí chữ tùy biến.
 100% Cục bộ bằng OpenCV & Pillow (PIL) - Tốn 0 Token API.
 """
 import os
@@ -48,10 +48,40 @@ class ThumbnailGenerator:
 
     @staticmethod
     def auto_clean_text(image_input_path: str, output_clean_path: str) -> str:
-        """Giữ nguyên ảnh phông nền HD sắc nét 100%, tránh làm mờ khuôn mặt nhân vật."""
+        """Tẩy sạch 100% chữ Trung Quốc trên ảnh gốc mà KHÔNG ĐỤNG VÀO KHUÔN MẶT NHÂN VẬT ở giữa!"""
         os.makedirs(os.path.dirname(output_clean_path), exist_ok=True)
-        im = Image.open(image_input_path).convert("RGB")
-        im.save(output_clean_path, "JPEG", quality=98)
+        img = cv2.imread(image_input_path)
+        if img is None:
+            im = Image.open(image_input_path).convert("RGB")
+            im.save(output_clean_path, "JPEG", quality=98)
+            return output_clean_path
+
+        h, w, _ = img.shape
+
+        # 1. Tạo mặt nạ vùng chứa chữ (Top-left & Bottom) - Chừa lại 100% khuôn mặt nhân vật ở giữa (Y: 20% -> 58%)
+        top_mask = np.zeros((h, w), dtype=np.uint8)
+        top_mask[0:int(h * 0.20), 0:int(w * 0.45)] = 255
+
+        bot_mask = np.zeros((h, w), dtype=np.uint8)
+        bot_mask[int(h * 0.58):int(h * 0.96), 0:w] = 255
+
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+        morph = cv2.morphologyEx(gray, cv2.MORPH_GRADIENT, kernel)
+        _, thresh = cv2.threshold(morph, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+        combined_zones = cv2.bitwise_or(top_mask, bot_mask)
+        text_in_zones = cv2.bitwise_and(thresh, combined_zones)
+
+        kernel_connect = cv2.getStructuringElement(cv2.MORPH_RECT, (11, 7))
+        connected = cv2.morphologyEx(text_in_zones, cv2.MORPH_CLOSE, kernel_connect)
+        mask_to_inpaint = cv2.dilate(connected, kernel, iterations=3)
+
+        # Inpaint TELEA chỉ trong vùng chứa chữ
+        cleaned = cv2.inpaint(img, mask_to_inpaint, inpaintRadius=9, flags=cv2.INPAINT_TELEA)
+
+        cv2.imwrite(output_clean_path, cleaned)
+        print(f"[ThumbnailGenerator] Đã tẩy sạch chữ Trung Quốc thành công: {output_clean_path}")
         return output_clean_path
 
     @staticmethod
@@ -131,7 +161,7 @@ class ThumbnailGenerator:
         text_cards: list
     ) -> str:
         """
-        Vẽ các thẻ chữ Tiếng Việt che sạch 100% chữ cũ theo vị trí kéo thả (X%, Y%) của người dùng.
+        Vẽ các thẻ chữ Tiếng Việt theo vị trí kéo thả (X%, Y%) của người dùng lên ảnh đã tẩy chữ.
         """
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         img = Image.open(image_input_path).convert("RGBA")
@@ -167,16 +197,15 @@ class ThumbnailGenerator:
             else:
                 fill_color = (255, 234, 0, 255)
 
-            # Vẽ khung che chữ cũ (Che sạch chữ Trung bên dưới)
-            bbox = font.getbbox(text)
-            w_t = bbox[2] - bbox[0]
-            h_t = bbox[3] - bbox[1]
-
-            if card.get("bg_box", True):  # Mặc định true để che sạch chữ cũ
+            # Vẽ khung mờ đen nghệ thuật nếu bật
+            if card.get("bg_box", False):
+                bbox = font.getbbox(text)
+                w_t = bbox[2] - bbox[0]
+                h_t = bbox[3] - bbox[1]
                 pad_x = max(12, int(width * 0.015))
                 pad_y = max(6, int(height * 0.008))
                 box = [pos_x - pad_x, pos_y - pad_y, pos_x + w_t + pad_x, pos_y + h_t + pad_y * 2]
-                draw.rectangle(box, fill=(0, 0, 0, 230))
+                draw.rectangle(box, fill=(0, 0, 0, 200))
 
             stroke_w = max(5, int(font_size_px * 0.12))
             cls.draw_bordered_text(
