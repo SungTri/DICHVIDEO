@@ -1,6 +1,6 @@
 """
 Service tạo và chỉnh sửa ảnh bìa Thumbnail Tiếng Việt tự động & Tương tác kéo thả.
-Hỗ trợ Giữ ảnh HD sắc nét 100% (Không mờ mặt nhân vật) & Kéo thả vị trí chữ tùy biến 100%.
+Hỗ trợ Giữ ảnh HD sắc nét 100% (Không mờ mặt nhân vật) & Kéo thả vị trí chữ che sạch chữ cũ 100%.
 100% Cục bộ bằng OpenCV & Pillow (PIL) - Tốn 0 Token API.
 """
 import os
@@ -131,7 +131,7 @@ class ThumbnailGenerator:
         text_cards: list
     ) -> str:
         """
-        Vẽ các thẻ chữ Tiếng Việt theo vị trí kéo thả (X%, Y%) trực quan của người dùng.
+        Vẽ các thẻ chữ Tiếng Việt che sạch 100% chữ cũ theo vị trí kéo thả (X%, Y%) của người dùng.
         """
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         img = Image.open(image_input_path).convert("RGBA")
@@ -143,7 +143,6 @@ class ThumbnailGenerator:
             if not text:
                 continue
 
-            # Thêm ngoặc nếu là dòng top red bracket
             if card.get("is_bracket", False):
                 if not (text.startswith("【") or text.startswith("[")):
                     text = f"【{text}】"
@@ -152,7 +151,6 @@ class ThumbnailGenerator:
             font_size_px = max(font_size_px, 18)
             font = cls.get_default_font(font_size_px)
 
-            # Tọa độ X%, Y%
             x_pct = float(card.get("x_percent", 5.0))
             y_pct = float(card.get("y_percent", 5.0))
 
@@ -169,14 +167,16 @@ class ThumbnailGenerator:
             else:
                 fill_color = (255, 234, 0, 255)
 
-            # Nếu bật khung che chữ cũ
-            if card.get("bg_box", False):
-                bbox = font.getbbox(text)
-                w_t = bbox[2] - bbox[0]
-                h_t = bbox[3] - bbox[1]
-                pad_x, pad_y = 12, 6
-                box = [pos_x - pad_x, pos_y - pad_y, pos_x + w_t + pad_x, pos_y + h_t + pad_y]
-                draw.rectangle(box, fill=(0, 0, 0, 210))
+            # Vẽ khung che chữ cũ (Che sạch chữ Trung bên dưới)
+            bbox = font.getbbox(text)
+            w_t = bbox[2] - bbox[0]
+            h_t = bbox[3] - bbox[1]
+
+            if card.get("bg_box", True):  # Mặc định true để che sạch chữ cũ
+                pad_x = max(12, int(width * 0.015))
+                pad_y = max(6, int(height * 0.008))
+                box = [pos_x - pad_x, pos_y - pad_y, pos_x + w_t + pad_x, pos_y + h_t + pad_y * 2]
+                draw.rectangle(box, fill=(0, 0, 0, 230))
 
             stroke_w = max(5, int(font_size_px * 0.12))
             cls.draw_bordered_text(

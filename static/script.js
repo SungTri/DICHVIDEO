@@ -2134,9 +2134,9 @@ window.interactiveThumbState = {
     clean_id: null,
     nextCardId: 4,
     cards: [
-        { id: 1, text: 'TRUYỆN NGỌT KẾT THÚC', color: '#ff3333', font_size: 44, x_percent: 5, y_percent: 4, is_bracket: true },
-        { id: 2, text: 'HỒI SINH TRỞ LẠI GẶP PHẢI ĐẠI VẬN', color: '#00e5ff', font_size: 50, x_percent: 8, y_percent: 67, is_bracket: false },
-        { id: 3, text: 'TỈNH LẠI SAU TAI NẠN XE, TÔI CHỈ MUỐN LY HÔN', color: '#ffea00', font_size: 46, x_percent: 6, y_percent: 81, is_bracket: false }
+        { id: 1, text: 'TRUYỆN NGỌT KẾT THÚC', color: '#ff3333', font_size: 55, x_percent: 5, y_percent: 4, is_bracket: true, bg_box: true },
+        { id: 2, text: 'HỒI SINH TRỞ LẠI GẶP PHẢI ĐẠI VẬN', color: '#00e5ff', font_size: 68, x_percent: 4, y_percent: 64, is_bracket: false, bg_box: true },
+        { id: 3, text: 'TỈNH LẠI SAU TAI NẠN XE, TÔI CHỈ MUỐN LY HÔN', color: '#ffea00', font_size: 60, x_percent: 3, y_percent: 79, is_bracket: false, bg_box: true }
     ]
 };
 
@@ -2269,16 +2269,19 @@ function renderInteractiveThumbStudio() {
         overlay.style.left = card.x_percent + '%';
         overlay.style.top = card.y_percent + '%';
         overlay.style.color = card.color;
-        overlay.style.fontSize = (card.font_size * 0.35) + 'px';
+        const wrapper = document.getElementById('thumbCanvasWrapper');
+        const containerW = wrapper ? wrapper.getBoundingClientRect().width : 800;
+        const fontSizePx = card.font_size * (containerW / 1000.0);
+        overlay.style.fontSize = Math.max(fontSizePx, 14) + 'px';
         overlay.style.fontWeight = 'bold';
         overlay.style.fontFamily = 'sans-serif';
         overlay.style.textShadow = '2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 3px 6px rgba(0,0,0,0.8)';
         overlay.style.cursor = 'move';
         overlay.style.whiteSpace = 'nowrap';
-        overlay.style.padding = '4px 8px';
+        overlay.style.padding = card.bg_box !== false ? '4px 10px' : '4px 8px';
         overlay.style.border = '1px dashed rgba(255,255,255,0.4)';
         overlay.style.borderRadius = '4px';
-        overlay.style.background = 'rgba(0,0,0,0.2)';
+        overlay.style.background = card.bg_box !== false ? 'rgba(0,0,0,0.92)' : 'rgba(0,0,0,0.2)';
         overlay.style.zIndex = '10';
 
         let displayText = card.text;
@@ -2353,11 +2356,17 @@ function updateOverlayStyle(id, color, size, bg_box) {
     const el = document.getElementById(`thumbOverlay_${id}`);
     if (el) {
         el.style.color = color;
-        el.style.fontSize = (size * 0.35) + 'px';
-        if (bg_box) {
-            el.style.background = 'rgba(0, 0, 0, 0.85)';
+        const wrapper = document.getElementById('thumbCanvasWrapper');
+        const containerW = wrapper ? wrapper.getBoundingClientRect().width : 800;
+        const fontSizePx = size * (containerW / 1000.0);
+        el.style.fontSize = Math.max(fontSizePx, 14) + 'px';
+        if (bg_box !== false) {
+            el.style.background = 'rgba(0, 0, 0, 0.92)';
+            el.style.padding = '4px 10px';
+            el.style.borderRadius = '4px';
         } else {
             el.style.background = 'rgba(0, 0, 0, 0.2)';
+            el.style.padding = '4px 8px';
         }
     }
 }
