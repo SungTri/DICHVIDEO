@@ -1,7 +1,7 @@
 """
 Service tạo và chỉnh sửa ảnh bìa Thumbnail Tiếng Việt tự động & Tương tác kéo thả.
-Hỗ trợ AI Tẩy sạch 100% chữ Trung Quốc trên ảnh gốc (Bỏ qua khuôn mặt nhân vật) & Kéo thả vị trí chữ tùy biến.
-100% Cục bộ bằng OpenCV & Pillow (PIL) - Tốn 0 Token API.
+Hỗ trợ Che chữ Trung Quốc bằng Dải Bóng Mờ Điện Ảnh & Giữ 100% HD khuôn mặt nhân vật.
+100% Cục bộ bằng Pillow (PIL) & FFmpeg - Tốn 0 Token API.
 """
 import os
 import math
@@ -48,40 +48,37 @@ class ThumbnailGenerator:
 
     @staticmethod
     def auto_clean_text(image_input_path: str, output_clean_path: str) -> str:
-        """Tẩy sạch 100% chữ Trung Quốc trên ảnh gốc mà KHÔNG ĐỤNG VÀO KHUÔN MẶT NHÂN VẬT ở giữa!"""
+        """Che vết chữ Trung Quốc bằng dải bóng mờ điện ảnh mượt mà, giữ nguyên 100% HD khuôn mặt nhân vật."""
         os.makedirs(os.path.dirname(output_clean_path), exist_ok=True)
-        img = cv2.imread(image_input_path)
-        if img is None:
-            im = Image.open(image_input_path).convert("RGB")
-            im.save(output_clean_path, "JPEG", quality=98)
-            return output_clean_path
+        
+        img = Image.open(image_input_path).convert("RGBA")
+        width, height = img.size
 
-        h, w, _ = img.shape
+        overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
 
-        # 1. Tạo mặt nạ vùng chứa chữ (Top-left & Bottom) - Chừa lại 100% khuôn mặt nhân vật ở giữa (Y: 20% -> 58%)
-        top_mask = np.zeros((h, w), dtype=np.uint8)
-        top_mask[0:int(h * 0.20), 0:int(w * 0.45)] = 255
+        # 1. Dải mờ bóng đêm Góc Trên Bên Trái (Che chữ Đỏ 【...】)
+        top_h = int(height * 0.22)
+        top_w = int(width * 0.45)
+        for x in range(top_w):
+            for y in range(top_h):
+                r_x = x / top_w
+                r_y = y / top_h
+                alpha = int(240 * (1.0 - (r_x**2 + r_y**2)**0.5))
+                if alpha > 0:
+                    draw.point((x, y), fill=(0, 0, 0, min(alpha, 230)))
 
-        bot_mask = np.zeros((h, w), dtype=np.uint8)
-        bot_mask[int(h * 0.58):int(h * 0.96), 0:w] = 255
+        # 2. Dải mờ bóng đêm Hàng Dưới (Che toàn bộ chữ Cyan & Vàng)
+        bot_h = int(height * 0.38)
+        for i in range(bot_h):
+            y = height - bot_h + i
+            ratio = i / bot_h
+            alpha = int(245 * math.sin(ratio * math.pi / 2))
+            draw.line([(0, y), (width, y)], fill=(0, 0, 0, min(alpha, 240)))
 
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-        morph = cv2.morphologyEx(gray, cv2.MORPH_GRADIENT, kernel)
-        _, thresh = cv2.threshold(morph, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-        combined_zones = cv2.bitwise_or(top_mask, bot_mask)
-        text_in_zones = cv2.bitwise_and(thresh, combined_zones)
-
-        kernel_connect = cv2.getStructuringElement(cv2.MORPH_RECT, (11, 7))
-        connected = cv2.morphologyEx(text_in_zones, cv2.MORPH_CLOSE, kernel_connect)
-        mask_to_inpaint = cv2.dilate(connected, kernel, iterations=3)
-
-        # Inpaint TELEA chỉ trong vùng chứa chữ
-        cleaned = cv2.inpaint(img, mask_to_inpaint, inpaintRadius=9, flags=cv2.INPAINT_TELEA)
-
-        cv2.imwrite(output_clean_path, cleaned)
-        print(f"[ThumbnailGenerator] Đã tẩy sạch chữ Trung Quốc thành công: {output_clean_path}")
+        final_img = Image.alpha_composite(img, overlay).convert("RGB")
+        final_img.save(output_clean_path, "JPEG", quality=98)
+        print(f"[ThumbnailGenerator] Đã tạo ảnh nền điện ảnh che chữ cũ: {output_clean_path}")
         return output_clean_path
 
     @staticmethod
@@ -161,7 +158,7 @@ class ThumbnailGenerator:
         text_cards: list
     ) -> str:
         """
-        Vẽ các thẻ chữ Tiếng Việt theo vị trí kéo thả (X%, Y%) của người dùng lên ảnh đã tẩy chữ.
+        Vẽ các thẻ chữ Tiếng Việt theo vị trí kéo thả (X%, Y%) của người dùng lên ảnh đã phủ dải mờ.
         """
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         img = Image.open(image_input_path).convert("RGBA")
@@ -197,7 +194,7 @@ class ThumbnailGenerator:
             else:
                 fill_color = (255, 234, 0, 255)
 
-            # Vẽ khung mờ đen nghệ thuật nếu bật
+            # Khung che nếu bật
             if card.get("bg_box", False):
                 bbox = font.getbbox(text)
                 w_t = bbox[2] - bbox[0]
