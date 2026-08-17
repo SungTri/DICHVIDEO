@@ -27,7 +27,7 @@ class Translator:
 
     # ==================== BATCH CHUNKING HELPERS ====================
 
-    BATCH_SIZE = 20  # Số đoạn tối đa gửi trong 1 lần gọi API
+    BATCH_SIZE = 45  # Số đoạn tối đa gửi trong 1 lần gọi API
 
     # Mapping tên ngôn ngữ đầy đủ cho prompt
     _LANG_NAMES = {
@@ -85,7 +85,7 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
             if isinstance(item, dict) and "index" in item and "text" in item
         }
 
-    def _call_gemini(self, input_data, json_module, urllib_request, GEMINI_API_KEY, from_lang="en", context_prompt=None, model_name="gemini-flash-latest"):
+    def _call_gemini(self, input_data, json_module, urllib_request, GEMINI_API_KEY, from_lang="en", context_prompt=None, model_name="gemini-flash-lite-latest"):
         """Gọi Gemini API cho một batch nhỏ."""
         prompt = self._build_prompt(input_data, json_module, from_lang, context_prompt)
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
@@ -198,7 +198,7 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
         
         if GEMINI_API_KEY and from_lang != "vi":
             g_keys = [k.strip() for k in GEMINI_API_KEY.split(",") if k.strip()]
-            g_models = ["gemini-flash-latest", "gemini-3.5-flash", "gemini-flash-lite-latest"]
+            g_models = ["gemini-flash-lite-latest", "gemini-1.5-flash-latest", "gemini-flash-lite-latest"]
             for m_name in g_models:
                 for idx, key in enumerate(g_keys):
                     p_name = f"Gemini {m_name} (Key {idx+1})" if len(g_keys) > 1 else f"Gemini {m_name}"
@@ -268,7 +268,7 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
                         if progress_callback:
                             progress_callback(len(trans_results) / total * 90)  # Giữ 10% cho assembly
                         
-                        time.sleep(3)  # Nghỉ 3 giây cơ bản để tránh Rate Limit
+                        time.sleep(0.5)  # Nghỉ 3 giây cơ bản để tránh Rate Limit
                         success = True
                         break
 
@@ -288,7 +288,7 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
                             retry_count += 1
                             if retry_count <= max_retries:
                                 print(f"  ⚠️ Lỗi ({api_name}): {str(e)}. Thử lại lần {retry_count}/{max_retries}...")
-                                time.sleep(3)
+                                time.sleep(0.5)
                             else:
                                 print(f"  ❌ Batch {batch_idx + 1}/{len(remaining_batches)} thất bại ({api_name}): {str(e)} sau {max_retries} lần thử lại.")
                                 if "401" in error_msg or "403" in error_msg or "unauthorized" in error_msg or "forbidden" in error_msg:
