@@ -80,7 +80,7 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
                     break
 
         return {
-            item["index"]: item["text"]
+            int(item["index"]): str(item["text"]).strip()
             for item in translated_list
             if isinstance(item, dict) and "index" in item and "text" in item
         }
@@ -304,9 +304,21 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
                 print(f"✅ [Translator] Dịch hoàn tất bằng {api_name} ({len(trans_results)}/{total} đoạn).")
                 break
 
-        missing_indices = [seg["index"] for seg in segments if seg["index"] not in trans_results]
-        if missing_indices:
-            print(f"⚠️ [Translator] Còn {len(missing_indices)} đoạn chưa dịch được. Giữ nguyên text gốc.")
+        missing_segs = [seg for seg in segments if seg["index"] not in trans_results]
+        if missing_segs:
+            print(f"🧹 [Translator] Phát hiện {len(missing_segs)} đoạn chưa có bản dịch. Bắt đầu Vòng Quét Vét AI 100%...")
+            for i in range(0, len(missing_segs), 15):
+                sub_batch = missing_segs[i:i + 15]
+                input_data = [{"index": seg["index"], "text": seg["text"]} for seg in sub_batch]
+                for k_idx, k_val in enumerate(g_keys):
+                    try:
+                        sweep_res = self._call_gemini(input_data, json, urllib.request, k_val, from_lang, context_prompt, "gemini-flash-lite-latest")
+                        if sweep_res:
+                            trans_results.update(sweep_res)
+                            print(f"  ✅ Quét vét xong {len(sweep_res)} đoạn bằng Key {k_idx + 1}")
+                            break
+                    except Exception:
+                        continue
 
         # Lắp ráp kết quả cuối cùng theo đúng thứ tự
         translated_segments = []
