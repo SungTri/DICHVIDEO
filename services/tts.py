@@ -106,6 +106,15 @@ class TTSService:
                 if attempt < 1:
                     await asyncio.sleep(1.5)
         
+                # Fallback 2: Nếu text dính chữ Trung Quốc, dùng giọng đọc Trung Quốc zh-CN-XiaoxiaoNeural để cứu cánh audio
+        print(f"[TTS] [Fallback 2] Dùng giọng đọc zh-CN-XiaoxiaoNeural cho text: " + text[:20])
+        try:
+            communicate = edge_tts.Communicate(text, "zh-CN-XiaoxiaoNeural")
+            await communicate.save(output_path)
+            if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                return output_path
+        except Exception as e:
+            print(f"[TTS] Fallback 2 lỗi: " + str(e))
         raise Exception(f"Không nhận được audio từ Edge TTS sau tất cả các lần thử với cả giọng đọc chính và giọng fallback.")
 
     def _get_audio_duration(self, file_path: str) -> float:

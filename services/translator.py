@@ -7,6 +7,11 @@ import urllib.error
 
 
 class Translator:
+    @staticmethod
+    def contains_chinese(text: str) -> bool:
+        import re
+        return bool(re.search(r"[一-鿿]", str(text)))
+
     """Dịch văn bản từ ngôn ngữ nguồn bất kỳ sang tiếng Việt."""
 
     def __init__(self):
@@ -304,7 +309,7 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
                 print(f"✅ [Translator] Dịch hoàn tất bằng {api_name} ({len(trans_results)}/{total} đoạn).")
                 break
 
-        missing_segs = [seg for seg in segments if seg["index"] not in trans_results]
+        missing_segs = [seg for seg in segments if seg["index"] not in trans_results or self.contains_chinese(trans_results.get(seg["index"], ""))]
         if missing_segs:
             print(f"🧹 [Translator] Phát hiện {len(missing_segs)} đoạn chưa có bản dịch. Bắt đầu Vòng Quét Vét AI 100%...")
             for i in range(0, len(missing_segs), 15):
@@ -321,6 +326,15 @@ You MUST output ONLY a valid JSON array of objects, containing two keys: 'index'
                         continue
 
         # Lắp ráp kết quả cuối cùng theo đúng thứ tự
+                zh_map = {"嗯": "Ừm", "啊": "À", "哦": "Ồ", "呃": "Hả", "呀": "Nè", "哈": "Ha", "哇": "Oa", "唉": "Haizz", "喂": "Alo", "好的": "Được rồi"}
+        for seg in segments:
+            idx = seg["index"]
+            curr_text = trans_results.get(idx, "").strip()
+            if not curr_text or self.contains_chinese(curr_text):
+                orig = seg.get("text", "").strip()
+                if orig in zh_map:
+                    trans_results[idx] = zh_map[orig]
+
         translated_segments = []
         for seg in segments:
             translated_text = trans_results.get(seg["index"], seg["text"])
