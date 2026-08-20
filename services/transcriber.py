@@ -92,11 +92,10 @@ class Transcriber:
         try:
             segments_gen, info = model.transcribe(
                 audio_path,
-                beam_size=1,
+                beam_size=5,
                 language=lang,
                 condition_on_previous_text=False,
-                vad_filter=True,
-                vad_parameters=dict(threshold=0.35, min_silence_duration_ms=200, speech_pad_ms=400)
+                vad_filter=False
             )
             # Thử duyệt qua generator để kích hoạt nạp thư viện CUDA thực tế
             segments_list = list(segments_gen)
@@ -117,11 +116,10 @@ class Transcriber:
                 # Chạy lại trên CPU
                 segments_gen, info = model.transcribe(
                     audio_path,
-                    beam_size=1,
+                    beam_size=5,
                     language=lang,
                     condition_on_previous_text=False,
-                    vad_filter=True,
-                    vad_parameters=dict(threshold=0.35, min_silence_duration_ms=200, speech_pad_ms=400)
+                    vad_filter=False
                 )
                 segments_list = list(segments_gen)
             else:
