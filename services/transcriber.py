@@ -157,14 +157,14 @@ class Transcriber:
         if progress_callback:
             progress_callback(100)
 
-                # NỐI LIỀN 100% TẤT CẢ CÁC ĐOẠN PHỤ ĐỀ (ZERO GAPS ON TIMELINE FOR CAPCUT):
-        # Tự động kéo dài thời gian kết thúc của mỗi câu cho tới đúng thời điểm câu kế tiếp cất lời,
-        # đảm bảo trên CapCut không bao giờ xuất hiện khoảng trống/hổng âm thanh.
+                # CÂN BẰNG HIỂN THỊ PHỤ ĐỀ (SMART DURATION EXTENSION):
+        # Kéo dài vừa đủ (tối đa +3.5s) để sub hiển thị tự nhiên, không bị giãn quá đà đè sang cảnh chữ mới
         for i in range(len(result) - 1):
             curr_seg = result[i]
             next_seg = result[i + 1]
             if curr_seg['end'] < next_seg['start']:
-                curr_seg['end'] = round(next_seg['start'] - 0.05, 3)
+                max_allowed_end = min(next_seg['start'] - 0.05, curr_seg['end'] + 3.5)
+                curr_seg['end'] = round(max_allowed_end, 3)
 
         print(f"[Transcriber] Nhận diện được {len(result)} đoạn.")
         return result
