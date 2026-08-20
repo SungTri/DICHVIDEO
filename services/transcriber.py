@@ -157,14 +157,7 @@ class Transcriber:
         if progress_callback:
             progress_callback(100)
 
-                # CÂN BẰNG HIỂN THỊ PHỤ ĐỀ (SMART DURATION EXTENSION):
-        # Kéo dài vừa đủ (tối đa +3.5s) để sub hiển thị tự nhiên, không bị giãn quá đà đè sang cảnh chữ mới
-        for i in range(len(result) - 1):
-            curr_seg = result[i]
-            next_seg = result[i + 1]
-            if curr_seg['end'] < next_seg['start']:
-                max_allowed_end = min(next_seg['start'] - 0.05, curr_seg['end'] + 3.5)
-                curr_seg['end'] = round(max_allowed_end, 3)
+                # PRESERVE 100% EXACT ORIGINAL RAW WHISPER TIMESTAMPS
 
         print(f"[Transcriber] Nhận diện được {len(result)} đoạn.")
         return result
