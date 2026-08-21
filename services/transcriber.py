@@ -88,14 +88,23 @@ class Transcriber:
 
         # auto -> None để Whisper tự động phát hiện ngôn ngữ nguồn
         lang = None if source_lang == "auto" else source_lang
+        prompt_map = {
+            "zh": "以下是中文短剧、漫剧和动画的完整对话与旁白字幕，请完整识别出所有说话内容：",
+            "en": "The following is the full transcript of all narration and dialogue in this video:"
+        }
+        init_prompt = prompt_map.get(source_lang, None)
+
 
         try:
             segments_gen, info = model.transcribe(
                 audio_path,
                 beam_size=5,
+                best_of=5,
                 language=lang,
-                condition_on_previous_text=False,
-                vad_filter=False
+                initial_prompt=init_prompt,
+                condition_on_previous_text=True,
+                vad_filter=False,
+                no_speech_threshold=0.6
             )
             # Thử duyệt qua generator để kích hoạt nạp thư viện CUDA thực tế
             segments_list = list(segments_gen)
@@ -117,9 +126,12 @@ class Transcriber:
                 segments_gen, info = model.transcribe(
                     audio_path,
                     beam_size=5,
+                    best_of=5,
                     language=lang,
-                    condition_on_previous_text=False,
-                    vad_filter=False
+                    initial_prompt=init_prompt,
+                    condition_on_previous_text=True,
+                    vad_filter=False,
+                    no_speech_threshold=0.6
                 )
                 segments_list = list(segments_gen)
             else:
