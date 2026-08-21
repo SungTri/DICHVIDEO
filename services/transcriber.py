@@ -179,7 +179,40 @@ class Transcriber:
                 if gap_sec <= 15.0:
                     curr_seg['end'] = round(next_seg['start'] - 0.05, 3)
 
-        print(f"[Transcriber] Nhận diện được {len(result)} đoạn.")
+        
+        # Tự động tách các câu dài chứa dấu phẩy/chấm Tiếng Trung (，, 。, ！, ？) thành từng khối phụ đề độc lập
+        refined_result = []
+        for seg in result:
+            txt = seg['text'].strip()
+            import re
+            parts = [p.strip() for p in re.split(r'([，。！？])', txt) if p.strip()]
+            clause_list = []
+            temp_c = ''
+            for p in parts:
+                temp_c += p
+                if p in ['，', '。', '！', '？'] or len(temp_c) >= 12:
+                    clause_list.append(temp_c.strip())
+                    temp_c = ''
+            if temp_c:
+                clause_list.append(temp_c.strip())
+            clause_list = [c for c in clause_list if c and c not in ['，', '。', '！', '？']]
+            if len(clause_list) > 1:
+                total_duration = seg['end'] - seg['start']
+                total_chars = sum(len(c) for c in clause_list) or 1
+                curr_t = seg['start']
+                for c in clause_list:
+                    dur = (len(c) / total_chars) * total_duration
+                    refined_result.append({
+                        'start': round(curr_t, 3),
+                        'end': round(curr_t + dur, 3),
+                        'text': c
+                    })
+                    curr_t += dur
+            else:
+                refined_result.append(seg)
+        result = refined_result
+
+        print(f"[Transcriber] Bóc tách và chia được {len(result)} khối phụ đề độc lập.")
         return result
 
     @staticmethod
@@ -193,16 +226,6 @@ class Transcriber:
 
     @staticmethod
     def generate_srt(segments: list, output_path: str) -> str:
-        # Nâng cấp: Tự động kéo nối 100% khoảng ngắt giữa các câu thoại để tạo dải phụ đề liền mạch trên Timeline
-        segs_copy = [dict(s) for s in segments]
-        for i in range(len(segs_copy) - 1):
-            curr_s = segs_copy[i]
-            next_s = segs_copy[i + 1]
-            if curr_s['end'] < next_s['start']:
-                gap_sec = next_s['start'] - curr_s['end']
-                if gap_sec <= 25.0:
-                    curr_s['end'] = round(next_s['start'] - 0.05, 3)
-        segments = segs_copy
         """
         Tạo file phụ đề SRT từ danh sách segments.
         
