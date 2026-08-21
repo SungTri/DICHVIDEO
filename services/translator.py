@@ -57,6 +57,7 @@ CRITICAL REQUIREMENTS:
 2. Follow standard Vietnamese grammar and sentence flow (do not translate word-for-word, reorganize sentences if necessary).
 3. Automatically correct any obvious speech-to-text transcription errors in the input based on the general context.
 4. Do not drop or add segment lines. The output MUST contain the exact same list of indexes.
+5. CRITICAL: Each translation MUST be a single line. Do NOT insert newline characters (\n) or combine multiple lines inside a single text field.
 5. Translate EVERYTHING into Vietnamese. Do NOT leave any original {lang_name} characters or words untranslated in the output (except globally recognized English brand names). The final text MUST be 100% Vietnamese.{context_str}
 
 Input subtitle JSON:

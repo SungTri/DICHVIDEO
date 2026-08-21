@@ -157,6 +157,15 @@ class Transcriber:
 
                 # PRESERVE 100% EXACT ORIGINAL RAW WHISPER TIMESTAMPS
 
+        
+        # Kéo dài nhẹ tối đa +2.5s ở các khoảng nghỉ ngắn để cover hết cảnh thoại không bị bỏ trống
+        for i in range(len(result) - 1):
+            curr_seg = result[i]
+            next_seg = result[i + 1]
+            if curr_seg['end'] < next_seg['start']:
+                fill_end = min(next_seg['start'] - 0.05, curr_seg['end'] + 2.5)
+                curr_seg['end'] = round(fill_end, 3)
+
         print(f"[Transcriber] Nhận diện được {len(result)} đoạn.")
         return result
 
