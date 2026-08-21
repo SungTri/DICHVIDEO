@@ -170,13 +170,14 @@ class Transcriber:
                 # PRESERVE 100% EXACT ORIGINAL RAW WHISPER TIMESTAMPS
 
         
-        # Kéo dài nhẹ tối đa +2.5s ở các khoảng nghỉ ngắn để cover hết cảnh thoại không bị bỏ trống
+        # Chế độ Phụ Đề Liền Mạch (Continuous Subtitle Timeline): Kéo nối 100% các khoảng ngắt thoại giữa các câu
         for i in range(len(result) - 1):
             curr_seg = result[i]
             next_seg = result[i + 1]
             if curr_seg['end'] < next_seg['start']:
-                fill_end = min(next_seg['start'] - 0.05, curr_seg['end'] + 2.5)
-                curr_seg['end'] = round(fill_end, 3)
+                gap_sec = next_seg['start'] - curr_seg['end']
+                if gap_sec <= 15.0:
+                    curr_seg['end'] = round(next_seg['start'] - 0.05, 3)
 
         print(f"[Transcriber] Nhận diện được {len(result)} đoạn.")
         return result
@@ -192,6 +193,16 @@ class Transcriber:
 
     @staticmethod
     def generate_srt(segments: list, output_path: str) -> str:
+        # Nâng cấp: Tự động kéo nối 100% khoảng ngắt giữa các câu thoại để tạo dải phụ đề liền mạch trên Timeline
+        segs_copy = [dict(s) for s in segments]
+        for i in range(len(segs_copy) - 1):
+            curr_s = segs_copy[i]
+            next_s = segs_copy[i + 1]
+            if curr_s['end'] < next_s['start']:
+                gap_sec = next_s['start'] - curr_s['end']
+                if gap_sec <= 25.0:
+                    curr_s['end'] = round(next_s['start'] - 0.05, 3)
+        segments = segs_copy
         """
         Tạo file phụ đề SRT từ danh sách segments.
         
