@@ -212,6 +212,34 @@ class Transcriber:
                 refined_result.append(seg)
         result = refined_result
 
+        
+        # Tự động chẻ nhỏ các khối phụ đề có thời lượng dài > 5.0s thành các khối 2-4s ngắn gọn
+        max_dur_result = []
+        for seg in result:
+            dur = seg['end'] - seg['start']
+            txt = seg['text'].strip()
+            words = txt.split()
+            if dur > 5.0 and len(words) > 3:
+                num_chunks = int(dur // 4.0) + 1
+                chunk_dur = dur / num_chunks
+                words_per_chunk = max(1, len(words) // num_chunks)
+                curr_t = seg['start']
+                for c in range(num_chunks):
+                    start_w = c * words_per_chunk
+                    end_w = (c + 1) * words_per_chunk if c < num_chunks - 1 else len(words)
+                    chunk_txt = ' '.join(words[start_w:end_w])
+                    end_t = seg['end'] if c == num_chunks - 1 else curr_t + chunk_dur
+                    if chunk_txt:
+                        max_dur_result.append({
+                            'start': round(curr_t, 3),
+                            'end': round(end_t, 3),
+                            'text': chunk_txt
+                        })
+                    curr_t += chunk_dur
+            else:
+                max_dur_result.append(seg)
+        result = max_dur_result
+
         print(f"[Transcriber] Bóc tách và chia được {len(result)} khối phụ đề độc lập.")
         return result
 
