@@ -296,7 +296,7 @@ class Transcriber:
                     e_t = next_s['start']
                     # Sample 1-2 frames inside the gap
                     mid_t = round((s_t + e_t) / 2.0, 2)
-                    tmp_img = os.path.join(os.path.dirname(output_path), f"ocr_gap_{i}.jpg")
+                    tmp_img = os.path.join(os.path.dirname(audio_path), f"ocr_gap_{i}.jpg")
                     cmd = f'ffmpeg -y -ss {mid_t} -i "{audio_path}" -vframes 1 "{tmp_img}"'
                     import subprocess
                     subprocess.run(cmd, shell=True, capture_output=True)
@@ -344,7 +344,7 @@ class Transcriber:
         """
         Tạo file phụ đề SRT từ danh sách segments với thời lượng khống chế 2.0s - 3.2s gọn gàng cho CapCut.
         """
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        os.makedirs(os.path.dirname(audio_path), exist_ok=True)
 
         with open(output_path, 'w', encoding='utf-8') as f:
             for i, seg in enumerate(segments, 1):
