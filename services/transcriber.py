@@ -284,44 +284,50 @@ class Transcriber:
             result.extend(gap_recovered)
             result.sort(key=lambda x: x['start'])
 
-        # PASS 3: Video OCR Hardcoded Subtitle Recovery (Bóc tách chữ in trên khung hình cho các khoảng hổng > 2.5s)
+        # PASS 3: Video OCR Hardcoded Subtitle Recovery (Bóc tách 100% chữ in trên khung hình cho các khoảng hổng >= 1.0s)
         if _ocr_engine and os.path.exists(audio_path):
             ocr_recovered = []
             for i in range(len(result) - 1):
                 curr_s = result[i]
                 next_s = result[i + 1]
                 gap_dur = next_s['start'] - curr_s['end']
-                if gap_dur >= 2.5:
+                if gap_dur >= 1.0:
                     s_t = curr_s['end']
                     e_t = next_s['start']
-                    # Sample 1-2 frames inside the gap
-                    mid_t = round((s_t + e_t) / 2.0, 2)
-                    tmp_img = os.path.join(os.path.dirname(audio_path), f"ocr_gap_{i}.jpg")
-                    cmd = f'ffmpeg -y -ss {mid_t} -i "{audio_path}" -vframes 1 "{tmp_img}"'
-                    import subprocess
-                    subprocess.run(cmd, shell=True, capture_output=True)
-                    if os.path.exists(tmp_img):
-                        try:
-                            ocr_res, _ = _ocr_engine(tmp_img)
-                            if ocr_res:
-                                for item in ocr_res:
-                                    txt = item[1].strip()
-                                    score = item[2]
-                                    # Filter out watermark/metadata and keep clean dialogue
-                                    if score >= 0.75 and len(txt) >= 2 and not any(w in txt for w in ["动漫", "虚构", "架空", "@", "http"]):
-                                        # Avoid duplicating existing text
-                                        if txt != curr_s['text'] and txt != next_s['text']:
-                                            ocr_recovered.append({
-                                                'start': round(mid_t - 0.5, 3),
-                                                'end': round(mid_t + 2.0, 3),
-                                                'text': txt
-                                            })
-                        except Exception:
-                            pass
-                        try:
-                            os.remove(tmp_img)
-                        except Exception:
-                            pass
+                    # Quét đa khung hình trong khoảng trống (mỗi 1.2 giây một tấm)
+                    sample_times = []
+                    curr_ts = s_t + 0.5
+                    while curr_ts < e_t:
+                        sample_times.append(round(curr_ts, 2))
+                        curr_ts += 1.2
+                    if not sample_times:
+                        sample_times = [round((s_t + e_t) / 2.0, 2)]
+
+                    for st_idx, sample_t in enumerate(sample_times):
+                        tmp_img = os.path.join(os.path.dirname(audio_path), f"ocr_gap_{i}_{st_idx}.jpg")
+                        cmd = f'ffmpeg -y -ss {sample_t} -i "{audio_path}" -vframes 1 "{tmp_img}"'
+                        import subprocess
+                        subprocess.run(cmd, shell=True, capture_output=True)
+                        if os.path.exists(tmp_img):
+                            try:
+                                ocr_res, _ = _ocr_engine(tmp_img)
+                                if ocr_res:
+                                    for item in ocr_res:
+                                        txt = item[1].strip()
+                                        score = item[2]
+                                        if score >= 0.70 and len(txt) >= 2 and not any(w in txt for w in ["动漫", "虚构", "架空", "@", "http", "制作"]):
+                                            if txt != curr_s['text'] and txt != next_s['text'] and not any(r['text'] == txt for r in ocr_recovered):
+                                                ocr_recovered.append({
+                                                    'start': round(sample_t, 3),
+                                                    'end': round(min(e_t, sample_t + 2.5), 3),
+                                                    'text': txt
+                                                })
+                            except Exception:
+                                pass
+                            try:
+                                os.remove(tmp_img)
+                            except Exception:
+                                pass
             if ocr_recovered:
                 print(f"[Transcriber OCR Pass] Đã đọc chữ từ khung hình và khôi phục thành công {len(ocr_recovered)} vế thoại Tiếng Trung bị lọt!")
                 result.extend(ocr_recovered)
@@ -342,22 +348,25 @@ class Transcriber:
     @staticmethod
     def generate_srt(segments: list, output_path: str) -> str:
         """
-        Tạo file phụ đề SRT từ danh sách segments với thời lượng khống chế 2.0s - 3.2s gọn gàng cho CapCut.
+        Tạo file phụ đề SRT nối liền dải mượt mà 100% cho CapCut (Continuous Subtitle Timeline).
         """
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        segs_copy = [dict(s) for s in segments]
+
+        # Nối liền 100% các khoảng nghỉ nhỏ (<= 3.5s) để dải đỏ trên CapCut liền mạch đẹp mắt
+        for idx in range(len(segs_copy) - 1):
+            curr_s = segs_copy[idx]
+            next_s = segs_copy[idx + 1]
+            gap = next_s['start'] - curr_s['end']
+            if 0 < gap <= 3.5:
+                curr_s['end'] = round(next_s['start'] - 0.05, 3)
 
         with open(output_path, 'w', encoding='utf-8') as f:
-            for i, seg in enumerate(segments, 1):
+            for i, seg in enumerate(segs_copy, 1):
                 start_t = seg['start']
                 end_t = seg['end']
                 text_val = str(seg['text']).replace('\r\n', '\n').strip()
                 safe_text = '\n'.join([line.strip() for line in text_val.split('\n') if line.strip()])
-
-                # Khống chế thời lượng phụ đề chuẩn 2.0s - 3.2s không bị kéo lê dài (8-11s) trên CapCut timeline
-                dur = end_t - start_t
-                if dur > 3.5:
-                    calc_dur = max(2.0, min(3.2, len(safe_text) * 0.075))
-                    end_t = round(start_t + calc_dur, 3)
 
                 start_ts = Transcriber.format_timestamp(start_t)
                 end_ts = Transcriber.format_timestamp(end_t)
@@ -365,7 +374,7 @@ class Transcriber:
                 f.write(f"{start_ts} --> {end_ts}\n")
                 f.write(f"{safe_text}\n\n")
 
-        print(f"[Transcriber] Đã tạo file SRT: {output_path}")
+        print(f"[Transcriber] Đã tạo file SRT liền mạch CapCut: {output_path}")
         return output_path
 
     @staticmethod
