@@ -1,3 +1,8 @@
+try:
+    from rapidocr_onnxruntime import RapidOCR
+    _ocr_engine = RapidOCR()
+except Exception:
+    _ocr_engine = None
 """
 Service nhận diện giọng nói sử dụng faster-whisper.
 Chạy hoàn toàn local, không cần API key.
@@ -278,6 +283,50 @@ class Transcriber:
             print(f"[Transcriber 2nd Pass] Đã quét vét và khôi phục thành công {len(gap_recovered)} câu thoại bị lọt trong các khoảng trống!")
             result.extend(gap_recovered)
             result.sort(key=lambda x: x['start'])
+
+        # PASS 3: Video OCR Hardcoded Subtitle Recovery (Bóc tách chữ in trên khung hình cho các khoảng hổng > 2.5s)
+        if _ocr_engine and os.path.exists(audio_path):
+            ocr_recovered = []
+            for i in range(len(result) - 1):
+                curr_s = result[i]
+                next_s = result[i + 1]
+                gap_dur = next_s['start'] - curr_s['end']
+                if gap_dur >= 2.5:
+                    s_t = curr_s['end']
+                    e_t = next_s['start']
+                    # Sample 1-2 frames inside the gap
+                    mid_t = round((s_t + e_t) / 2.0, 2)
+                    tmp_img = os.path.join(os.path.dirname(output_path), f"ocr_gap_{i}.jpg")
+                    cmd = f'ffmpeg -y -ss {mid_t} -i "{audio_path}" -vframes 1 "{tmp_img}"'
+                    import subprocess
+                    subprocess.run(cmd, shell=True, capture_output=True)
+                    if os.path.exists(tmp_img):
+                        try:
+                            ocr_res, _ = _ocr_engine(tmp_img)
+                            if ocr_res:
+                                for item in ocr_res:
+                                    txt = item[1].strip()
+                                    score = item[2]
+                                    # Filter out watermark/metadata and keep clean dialogue
+                                    if score >= 0.75 and len(txt) >= 2 and not any(w in txt for w in ["动漫", "虚构", "架空", "@", "http"]):
+                                        # Avoid duplicating existing text
+                                        if txt != curr_s['text'] and txt != next_s['text']:
+                                            ocr_recovered.append({
+                                                'start': round(mid_t - 0.5, 3),
+                                                'end': round(mid_t + 2.0, 3),
+                                                'text': txt
+                                            })
+                        except Exception:
+                            pass
+                        try:
+                            os.remove(tmp_img)
+                        except Exception:
+                            pass
+            if ocr_recovered:
+                print(f"[Transcriber OCR Pass] Đã đọc chữ từ khung hình và khôi phục thành công {len(ocr_recovered)} vế thoại Tiếng Trung bị lọt!")
+                result.extend(ocr_recovered)
+                result.sort(key=lambda x: x['start'])
+
 
         return result
 
