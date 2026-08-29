@@ -75,7 +75,58 @@ class Transcriber:
                 print(f"[Transcriber] Model '{model_size}' đã sẵn sàng trên CPU (int8)!")
         return self._models[model_size]
 
-    def transcribe(self, audio_path: str, model_size: str = "base", 
+    
+    def scan_video_ocr_full(self, v_path: str) -> list:
+        """Phương thức dự phòng Lưới An Toàn: Chụp ảnh và bóc chữ in trên toàn bộ video MP4."""
+        if not _ocr_engine or not os.path.exists(v_path):
+            return []
+        try:
+            import subprocess
+            cmd_dur = f'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "{v_path}"'
+            res_dur = subprocess.run(cmd_dur, shell=True, capture_output=True, text=True)
+            v_dur = float(res_dur.stdout.strip()) if res_dur.stdout.strip() else 0
+        except Exception:
+            v_dur = 0
+
+        if v_dur <= 0:
+            return []
+
+        ocr_full = []
+        sample_t = 1.0
+        frame_idx = 0
+        job_dir = os.path.dirname(v_path)
+        while sample_t < v_dur:
+            tmp_img = os.path.join(job_dir, f"app_ocr_{frame_idx}.jpg")
+            cmd_f = f'ffmpeg -y -ss {sample_t:.2f} -i "{v_path}" -vframes 1 "{tmp_img}"'
+            subprocess.run(cmd_f, shell=True, capture_output=True)
+            if os.path.exists(tmp_img):
+                try:
+                    ocr_res, _ = _ocr_engine(tmp_img)
+                    if ocr_res:
+                        for item in ocr_res:
+                            txt = item[1].strip()
+                            score = item[2]
+                            if score >= 0.70 and len(txt) >= 2 and not any(w in txt for w in ["动漫", "虚构", "架空", "@", "http", "制作"]):
+                                if not any(r['text'] == txt for r in ocr_full):
+                                    ocr_full.append({
+                                        'index': len(ocr_full) + 1,
+                                        'start': round(sample_t, 3),
+                                        'end': round(min(v_dur, sample_t + 2.5), 3),
+                                        'text': txt
+                                    })
+                except Exception:
+                    pass
+                try:
+                    os.remove(tmp_img)
+                except Exception:
+                    pass
+            sample_t += 1.5
+            frame_idx += 1
+
+        ocr_full.sort(key=lambda x: x['start'])
+        return ocr_full
+
+def transcribe(self, audio_path: str, model_size: str = "base", 
                   source_lang: str = "en", progress_callback=None) -> list:
         """
         Nhận diện giọng nói từ file audio.

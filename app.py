@@ -331,8 +331,20 @@ async def process_pipeline_start(job_id: str, url: str | None = None,
         )
 
         if not segments:
-            raise RuntimeError("Không nhận diện được giọng nói trong video. "
-                             "Video có thể không có audio hoặc không đúng ngôn ngữ chọn.")
+            print("⚠️ [App] Whisper trả về 0 đoạn thoại. Đang kích hoạt Lưới An Toàn 2: Quét trực tiếp chữ in trên màn hình video MP4...")
+            try:
+                ocr_segs = await asyncio.to_thread(
+                    transcriber.scan_video_ocr_full, video_path
+                )
+                if ocr_segs:
+                    segments = ocr_segs
+                    print(f"🎉 [App] Đã khôi phục thành công {len(segments)} khối phụ đề từ màn hình video!")
+            except Exception as ocr_err:
+                print(f"⚠️ [App Safety Net Error]: {ocr_err}")
+
+        if not segments:
+            raise RuntimeError("Không tìm thấy thoại hoặc chữ in trên video. "
+                             "Vui lòng kiểm tra file video đầu vào.")
 
         # Tạo SRT tiếng Anh/nguồn tạm thời
         job_temp_dir = os.path.join(TEMP_DIR, job_id)
