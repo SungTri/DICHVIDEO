@@ -241,6 +241,44 @@ class Transcriber:
         result = max_dur_result
 
         print(f"[Transcriber] Bóc tách và chia được {len(result)} khối phụ đề độc lập.")
+
+        # PASS 2: Tự động quét vét 100% các khoảng trống thoại > 4.0s bị bỏ lọt
+        gap_recovered = []
+        for i in range(len(result) - 1):
+            curr_s = result[i]
+            next_s = result[i + 1]
+            gap_dur = next_s['start'] - curr_s['end']
+            if gap_dur >= 4.0:
+                s_t = curr_s['end']
+                e_t = next_s['start']
+                try:
+                    sub_segs, _ = self.model.transcribe(
+                        audio_path,
+                        language=language,
+                        beam_size=10,
+                        best_of=10,
+                        initial_prompt="以下是未识别的完整中文对话与旁白字幕：",
+                        clip_timestamps=[s_t, e_t],
+                        vad_filter=False,
+                        no_speech_threshold=None,
+                        log_prob_threshold=None,
+                        compression_ratio_threshold=None
+                    )
+                    for s in sub_segs:
+                        txt_clean = s.text.strip()
+                        if txt_clean and len(txt_clean) > 1 and "请完整识别" not in txt_clean:
+                            gap_recovered.append({
+                                'start': round(s.start, 3),
+                                'end': round(s.end, 3),
+                                'text': txt_clean
+                            })
+                except Exception:
+                    pass
+        if gap_recovered:
+            print(f"[Transcriber 2nd Pass] Đã quét vét và khôi phục thành công {len(gap_recovered)} câu thoại bị lọt trong các khoảng trống!")
+            result.extend(gap_recovered)
+            result.sort(key=lambda x: x['start'])
+
         return result
 
     @staticmethod
