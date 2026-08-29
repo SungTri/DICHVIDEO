@@ -42,29 +42,36 @@ class Translator:
     }
 
     def _build_prompt(self, input_data, json_module, from_lang="en", context_prompt=None):
-        """Tạo prompt dịch thuật chung cho mọi API, tự động nhận dạng ngôn ngữ nguồn."""
+        """Tạo prompt dịch thuật chuyên nghiệp 100% bảo toàn số lượng subtitle theo chuẩn cao cấp."""
         lang_name = self._LANG_NAMES.get(from_lang, from_lang.upper())
         
         context_str = ""
         if context_prompt and isinstance(context_prompt, str) and context_prompt.strip():
-            context_str = f"\n5. NGỮ CẢNH BỔ SUNG TỪ NGƯỜI DÙNG: {context_prompt.strip()}\n"
+            context_str = f"\n- NGỮ CẢNH BỔ SUNG TỪ NGƯỜI DÙNG: {context_prompt.strip()}\n"
             
-        return f"""You are a professional video translator and editor.
-Your task is to translate the following {lang_name} subtitle segments into natural, fluent Vietnamese.
+        return f"""Bạn là AI chuyên gia biên dịch phụ đề video và phim ảnh từ {lang_name} sang Tiếng Việt.
 
-CRITICAL REQUIREMENTS:
-1. Translating for video presentations or advertisements, so keep the tone engaging, professional, and natural.
-2. Follow standard Vietnamese grammar and sentence flow (do not translate word-for-word, reorganize sentences if necessary).
-3. Automatically correct any obvious speech-to-text transcription errors in the input based on the general context.
-4. Do not drop or add segment lines. The output MUST contain the exact same list of indexes.
-5. CRITICAL: Each translation MUST be a single line. Do NOT insert newline characters (\n) or combine multiple lines inside a single text field.
-6. CRITICAL: Do NOT omit, summarize, or skip any clause inside a segment. Translate 100% of all clauses in full detail.
-5. Translate EVERYTHING into Vietnamese. Do NOT leave any original {lang_name} characters or words untranslated in the output (except globally recognized English brand names). The final text MUST be 100% Vietnamese.{context_str}
+NHIỆM VỤ TỐI THƯỢNG:
+Dịch toàn bộ danh sách phụ đề đầu vào sang Tiếng Việt tự nhiên, lôi cuốn, chuẩn xác 100%.
 
-Input subtitle JSON:
+CÁC NGUYÊN TẮC BẮT BUỘC KHÔNG ĐƯỢC VI PHẠM:
+1. BẢO TOÀN 100% SỐ LƯỢNG ENTRY/INDEX:
+   - Số lượng entry đầu ra PHẢI BẰNG CHÍNH XÁC số lượng entry đầu vào (Input count = Output count).
+   - Tuyệt đối không được bỏ sót, xóa bỏ, gộp hay chia nhỏ bất kỳ index nào.
+   - Các câu rất ngắn như tiếng cảm thán: "Ừ", "À", "Hả?", "Này!", "Ồ", "Ừm", "..." VẪN PHẢI GIỮ NGUYÊN VÀ DỊCH.
+2. TUYỆT ĐỐI KHÔNG TÓM TẮT:
+   - Không được lược bỏ vế câu, không gộp các câu có nội dung tương tự. Dịch đầy đủ 100% chi tiết.
+3. VĂN PHONG TỰ NHIÊN, CHUẨN ĐIỆN ẢNH:
+   - Dịch trôi chảy theo ngữ cảnh video/phim ảnh Việt Nam, xưng hô phù hợp, sửa lỗi chính tả phát âm STT.
+4. MỖI BẢN DỊCH LÀ 1 DÒNG DUY NHẤT:
+   - Không chèn ký tự xuống dòng (\n) trong trường text.
+5. DỊCH SẠCH 100% SANG TIẾNG VIỆT:
+   - Tuyệt đối không để sót chữ {lang_name} gốc trong bản dịch.{context_str}
+
+Danh sách phụ đề đầu vào (JSON):
 {json_module.dumps(input_data, ensure_ascii=False, indent=2)}
 
-You MUST output ONLY a valid JSON array of objects, containing two keys: 'index' (int) and 'text' (string, the translated Vietnamese text). Do not wrap the JSON in code blocks (such as ```json) or add any extra text or conversational filler."""
+BẮT BUỘC TRẢ VỀ: Chỉ trả về duy nhất 1 JSON Array hợp lệ gồm các object có đúng 2 key: "index" (int) và "text" (string, bản dịch tiếng Việt). Tuyệt đối không thêm lời giải thích hay bọc mã."""
 
     def _parse_api_response(self, raw_text, json_module):
         """Phân tích JSON trả về từ API, hỗ trợ cả dạng array và object."""
