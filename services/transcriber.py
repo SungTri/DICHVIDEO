@@ -290,12 +290,19 @@ class Transcriber:
         if not v_path.lower().endswith(('.mp4', '.mkv', '.mov', '.avi', '.webm', '.flv')):
             job_dir = os.path.dirname(audio_path)
             job_id = os.path.basename(job_dir)
-            import glob
-            v_matches = glob.glob(f"downloads/{job_id}/*.*") + glob.glob(f"{job_dir}/*.*")
-            for m in v_matches:
-                if m.lower().endswith(('.mp4', '.mkv', '.mov', '.avi', '.webm', '.flv')):
-                    v_path = m
-                    break
+            c1 = os.path.join("downloads", job_id, "local_video.mp4")
+            c2 = os.path.join(os.getcwd(), "downloads", job_id, "local_video.mp4")
+            if os.path.exists(c1):
+                v_path = c1
+            elif os.path.exists(c2):
+                v_path = c2
+            else:
+                import glob
+                v_matches = glob.glob(os.path.join("downloads", job_id, "*.*")) + glob.glob(os.path.join(job_dir, "*.*"))
+                for m in v_matches:
+                    if m.lower().endswith(('.mp4', '.mkv', '.mov', '.avi', '.webm', '.flv')):
+                        v_path = m
+                        break
 
 # PASS 3.1: Nếu audio không nhận diện được (result rỗng hoặc chỉ có 1 đoạn), tự động chạy Full Video OCR trên toàn bộ video
         if _ocr_engine and os.path.exists(v_path) and len(result) <= 1:
