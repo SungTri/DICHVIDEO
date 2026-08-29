@@ -261,7 +261,7 @@ def make_sync_callback(job_id: str, step_index: int, loop, message_prefix=""):
 
 async def process_pipeline_start(job_id: str, url: str | None = None, 
                                 model_size: str = "base", 
-                                source_lang: str = "en", 
+                                source_lang: str = "zh", 
                                 original_volume: float = 0.15,
                                 video_quality: str = "best",
                                 context_prompt: str | None = None):
@@ -512,7 +512,7 @@ class StartRequest(BaseModel):
     url: str | None = None
     job_id: str | None = None
     model_size: str = "base"
-    source_lang: str = "en"
+    source_lang: str = "zh"
     original_volume: float = 0.15
     video_quality: str = "best"
     series_name: str | None = None

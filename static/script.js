@@ -151,7 +151,7 @@ let jobsCache = null;
 // Cấu hình tham số mặc định
 const configs = {
     model_size: 'base',
-    source_lang: 'en',
+    source_lang: 'zh',
     voice: 'vi-VN-HoaiMyNeural',
     voice_speed: 1.0,
     original_volume: 0.15,

@@ -247,7 +247,33 @@ class Transcriber:
 
         print(f"[Transcriber] Bóc tách và chia được {len(result)} khối phụ đề độc lập.")
 
-        # PASS 2: Tự động quét vét 100% các khoảng trống thoại > 4.0s bị bỏ lọt
+                # PASS 1.1: Nếu nhận diện 0 câu thoại, tự động fallback sang Tiếng Trung ('zh') để quét lại
+        if not result and source_lang != "zh":
+            print("⚠️ [Transcriber] Không tìm thấy thoại với ngôn ngữ chọn. Tự động fallback sang Tiếng Trung ('zh')...")
+            try:
+                sub_gen, _ = model.transcribe(
+                    audio_path,
+                    beam_size=10, temperature=[0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
+                    best_of=10,
+                    language="zh",
+                    initial_prompt="以下是中文短剧、漫剧和动画的完整对话与旁白字幕，请完整识别出所有说话内容：",
+                    condition_on_previous_text=True,
+                    vad_filter=False,
+                    no_speech_threshold=None, log_prob_threshold=None, compression_ratio_threshold=None
+                )
+                for s in sub_gen:
+                    t_txt = s.text.strip()
+                    if t_txt and len(t_txt) > 1:
+                        result.append({
+                            'index': len(result) + 1,
+                            'start': round(s.start, 3),
+                            'end': round(s.end, 3),
+                            'text': t_txt
+                        })
+            except Exception as fe:
+                print(f"⚠️ [Transcriber Fallback Error]: {fe}")
+
+# PASS 2: Tự động quét vét 100% các khoảng trống thoại > 4.0s bị bỏ lọt
         gap_recovered = []
         for i in range(len(result) - 1):
             curr_s = result[i]
