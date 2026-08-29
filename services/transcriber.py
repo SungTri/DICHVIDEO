@@ -344,7 +344,7 @@ class Transcriber:
         """
         Tạo file phụ đề SRT từ danh sách segments với thời lượng khống chế 2.0s - 3.2s gọn gàng cho CapCut.
         """
-        os.makedirs(os.path.dirname(audio_path), exist_ok=True)
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
         with open(output_path, 'w', encoding='utf-8') as f:
             for i, seg in enumerate(segments, 1):
