@@ -284,12 +284,25 @@ class Transcriber:
             result.extend(gap_recovered)
             result.sort(key=lambda x: x['start'])
 
-                        # PASS 3.1: Nếu audio không nhận diện được (result rỗng hoặc chỉ có 1 đoạn), tự động chạy Full Video OCR trên toàn bộ video
-        if _ocr_engine and os.path.exists(audio_path) and len(result) <= 1:
+                        
+        # Xác định đường dẫn video MP4 thực tế để chụp khung hình OCR (không dùng file audio.wav)
+        v_path = audio_path
+        if not v_path.lower().endswith(('.mp4', '.mkv', '.mov', '.avi', '.webm', '.flv')):
+            job_dir = os.path.dirname(audio_path)
+            job_id = os.path.basename(job_dir)
+            import glob
+            v_matches = glob.glob(f"downloads/{job_id}/*.*") + glob.glob(f"{job_dir}/*.*")
+            for m in v_matches:
+                if m.lower().endswith(('.mp4', '.mkv', '.mov', '.avi', '.webm', '.flv')):
+                    v_path = m
+                    break
+
+# PASS 3.1: Nếu audio không nhận diện được (result rỗng hoặc chỉ có 1 đoạn), tự động chạy Full Video OCR trên toàn bộ video
+        if _ocr_engine and os.path.exists(v_path) and len(result) <= 1:
             print("⚠️ [Transcriber] Whisper không phát hiện âm thanh thoại. Đang tự động quét Full Video OCR toàn bộ khung hình video...")
             try:
                 import subprocess
-                cmd_dur = f'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "{audio_path}"'
+                cmd_dur = f'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "{v_path}"'
                 res_dur = subprocess.run(cmd_dur, shell=True, capture_output=True, text=True)
                 v_dur = float(res_dur.stdout.strip()) if res_dur.stdout.strip() else 0
             except Exception:
@@ -301,7 +314,7 @@ class Transcriber:
                 frame_idx = 0
                 while sample_t < v_dur:
                     tmp_img = os.path.join(os.path.dirname(audio_path), f"ocr_full_{frame_idx}.jpg")
-                    cmd_f = f'ffmpeg -y -ss {sample_t:.2f} -i "{audio_path}" -vframes 1 "{tmp_img}"'
+                    cmd_f = f'ffmpeg -y -ss {sample_t:.2f} -i "{v_path}" -vframes 1 "{tmp_img}"'
                     subprocess.run(cmd_f, shell=True, capture_output=True)
                     if os.path.exists(tmp_img):
                         try:
@@ -332,7 +345,7 @@ class Transcriber:
                     result.sort(key=lambda x: x['start'])
 
 # PASS 3: Video OCR Hardcoded Subtitle Recovery (Bóc tách 100% chữ in trên khung hình cho các khoảng hổng >= 0.8s)
-        if _ocr_engine and os.path.exists(audio_path):
+        if _ocr_engine and os.path.exists(v_path):
             ocr_recovered = []
             for i in range(len(result) - 1):
                 curr_s = result[i]
@@ -345,7 +358,7 @@ class Transcriber:
                     while sample_ts < e_t:
                         sample_t = round(sample_ts, 2)
                         tmp_img = os.path.join(os.path.dirname(audio_path), f"ocr_gap_{i}_{int(sample_t*10)}.jpg")
-                        cmd = f'ffmpeg -y -ss {sample_t} -i "{audio_path}" -vframes 1 "{tmp_img}"'
+                        cmd = f'ffmpeg -y -ss {sample_t} -i "{v_path}" -vframes 1 "{tmp_img}"'
                         import subprocess
                         subprocess.run(cmd, shell=True, capture_output=True)
                         if os.path.exists(tmp_img):
