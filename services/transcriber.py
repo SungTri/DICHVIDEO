@@ -98,7 +98,7 @@ class Transcriber:
         try:
             segments_gen, info = model.transcribe(
                 audio_path,
-                beam_size=10,
+                beam_size=10, temperature=[0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
                 best_of=10,
                 language=lang,
                 initial_prompt=init_prompt,
@@ -125,7 +125,7 @@ class Transcriber:
                 # Chạy lại trên CPU
                 segments_gen, info = model.transcribe(
                     audio_path,
-                    beam_size=10,
+                    beam_size=10, temperature=[0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
                     best_of=10,
                     language=lang,
                     initial_prompt=init_prompt,
@@ -248,14 +248,14 @@ class Transcriber:
             curr_s = result[i]
             next_s = result[i + 1]
             gap_dur = next_s['start'] - curr_s['end']
-            if gap_dur >= 4.0:
+            if gap_dur >= 2.0:
                 s_t = curr_s['end']
                 e_t = next_s['start']
                 try:
                     sub_segs, _ = self.model.transcribe(
                         audio_path,
                         language=language,
-                        beam_size=10,
+                        beam_size=10, temperature=[0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
                         best_of=10,
                         initial_prompt="以下是未识别的完整中文对话与旁白字幕：",
                         clip_timestamps=[s_t, e_t],
