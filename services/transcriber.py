@@ -293,26 +293,27 @@ class Transcriber:
     @staticmethod
     def generate_srt(segments: list, output_path: str) -> str:
         """
-        Tạo file phụ đề SRT từ danh sách segments.
-        
-        Args:
-            segments: Danh sách segments
-            output_path: Đường dẫn file SRT đầu ra
-            
-        Returns:
-            Đường dẫn file SRT
+        Tạo file phụ đề SRT từ danh sách segments với thời lượng khống chế 2.0s - 3.2s gọn gàng cho CapCut.
         """
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
         with open(output_path, 'w', encoding='utf-8') as f:
             for i, seg in enumerate(segments, 1):
-                start_ts = Transcriber.format_timestamp(seg['start'])
-                end_ts = Transcriber.format_timestamp(seg['end'])
+                start_t = seg['start']
+                end_t = seg['end']
+                text_val = str(seg['text']).replace('\r\n', '\n').strip()
+                safe_text = '\n'.join([line.strip() for line in text_val.split('\n') if line.strip()])
+
+                # Khống chế thời lượng phụ đề chuẩn 2.0s - 3.2s không bị kéo lê dài (8-11s) trên CapCut timeline
+                dur = end_t - start_t
+                if dur > 3.5:
+                    calc_dur = max(2.0, min(3.2, len(safe_text) * 0.075))
+                    end_t = round(start_t + calc_dur, 3)
+
+                start_ts = Transcriber.format_timestamp(start_t)
+                end_ts = Transcriber.format_timestamp(end_t)
                 f.write(f"{i}\n")
                 f.write(f"{start_ts} --> {end_ts}\n")
-                # Xử lý an toàn: loại bỏ các dòng trắng liên tiếp, tránh làm hỏng định dạng SRT
-                safe_text = str(seg['text']).replace('\r\n', '\n').strip()
-                safe_text = '\n'.join([line.strip() for line in safe_text.split('\n') if line.strip()])
                 f.write(f"{safe_text}\n\n")
 
         print(f"[Transcriber] Đã tạo file SRT: {output_path}")
