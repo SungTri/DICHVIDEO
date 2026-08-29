@@ -284,7 +284,54 @@ class Transcriber:
             result.extend(gap_recovered)
             result.sort(key=lambda x: x['start'])
 
-                # PASS 3: Video OCR Hardcoded Subtitle Recovery (Bóc tách 100% chữ in trên khung hình cho các khoảng hổng >= 0.8s)
+                        # PASS 3.1: Nếu audio không nhận diện được (result rỗng hoặc chỉ có 1 đoạn), tự động chạy Full Video OCR trên toàn bộ video
+        if _ocr_engine and os.path.exists(audio_path) and len(result) <= 1:
+            print("⚠️ [Transcriber] Whisper không phát hiện âm thanh thoại. Đang tự động quét Full Video OCR toàn bộ khung hình video...")
+            try:
+                import subprocess
+                cmd_dur = f'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "{audio_path}"'
+                res_dur = subprocess.run(cmd_dur, shell=True, capture_output=True, text=True)
+                v_dur = float(res_dur.stdout.strip()) if res_dur.stdout.strip() else 0
+            except Exception:
+                v_dur = 0
+
+            if v_dur > 0:
+                ocr_full = []
+                sample_t = 1.0
+                frame_idx = 0
+                while sample_t < v_dur:
+                    tmp_img = os.path.join(os.path.dirname(audio_path), f"ocr_full_{frame_idx}.jpg")
+                    cmd_f = f'ffmpeg -y -ss {sample_t:.2f} -i "{audio_path}" -vframes 1 "{tmp_img}"'
+                    subprocess.run(cmd_f, shell=True, capture_output=True)
+                    if os.path.exists(tmp_img):
+                        try:
+                            ocr_res, _ = _ocr_engine(tmp_img)
+                            if ocr_res:
+                                for item in ocr_res:
+                                    txt = item[1].strip()
+                                    score = item[2]
+                                    if score >= 0.70 and len(txt) >= 2 and not any(w in txt for w in ["动漫", "虚构", "架空", "@", "http", "制作"]):
+                                        if not any(r['text'] == txt for r in ocr_full):
+                                            ocr_full.append({
+                                                'start': round(sample_t, 3),
+                                                'end': round(min(v_dur, sample_t + 2.5), 3),
+                                                'text': txt
+                                            })
+                        except Exception:
+                            pass
+                        try:
+                            os.remove(tmp_img)
+                        except Exception:
+                            pass
+                    sample_t += 1.5
+                    frame_idx += 1
+
+                if ocr_full:
+                    print(f"[Transcriber Full OCR] Đã quét toàn bộ video và bóc tách thành công {len(ocr_full)} khối phụ đề từ màn hình!")
+                    result.extend(ocr_full)
+                    result.sort(key=lambda x: x['start'])
+
+# PASS 3: Video OCR Hardcoded Subtitle Recovery (Bóc tách 100% chữ in trên khung hình cho các khoảng hổng >= 0.8s)
         if _ocr_engine and os.path.exists(audio_path):
             ocr_recovered = []
             for i in range(len(result) - 1):
