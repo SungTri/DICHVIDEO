@@ -126,7 +126,7 @@ class Transcriber:
         ocr_full.sort(key=lambda x: x['start'])
         return ocr_full
 
-def transcribe(self, audio_path: str, model_size: str = "base", 
+    def transcribe(self, audio_path: str, model_size: str = "base", 
                   source_lang: str = "en", progress_callback=None) -> list:
         """
         Nhận diện giọng nói từ file audio.
