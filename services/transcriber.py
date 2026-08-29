@@ -202,29 +202,32 @@ class Transcriber:
             if not text:
                 continue
 
-            # Tự động cắt tách các câu ghép Tiếng Trung có dấu phẩy/chấm
-            if source_lang == "zh" and any(p in text for p in ["，", "。", "！", "？"]):
-                parts = [p.strip() for p in re.split(r'([，。！？])', text) if p.strip()]
-                clauses = []
+            # Tự động cắt tách các câu ghép và đoạn dài Tiếng Trung theo dấu câu (: , . ! ? 、 ; ...)
+            delims = r'([：:，。！？、；;])'
+            has_delim = any(p in text for p in ["：", ":", "，", "。", "！", "？", "、", "；", ";"])
+            if has_delim:
+                parts = [p.strip() for p in re.split(delims, text) if p.strip()]
+                raw_clauses = []
                 for p in parts:
-                    if p in ["，", "。", "！", "？"] and clauses:
-                        clauses[-1] += p
+                    if p in '：:，。！？、；;' and raw_clauses:
+                        raw_clauses[-1] += p
                     else:
-                        clauses.append(p)
+                        raw_clauses.append(p)
                 
-                total_len = sum(len(c) for c in clauses)
-                if total_len > 0 and len(clauses) > 1:
+                total_len = sum(len(c) for c in raw_clauses)
+                if total_len > 0 and len(raw_clauses) > 1:
                     c_start = seg.start
                     dur_total = seg.end - seg.start
-                    for c_txt in clauses:
+                    for c_txt in raw_clauses:
                         c_dur = (len(c_txt) / total_len) * dur_total
                         c_end = c_start + c_dur
-                        if c_txt.strip():
+                        clean_c = c_txt.strip('：:，。！？、；; ')
+                        if clean_c:
                             result.append({
                                 'index': len(result) + 1,
                                 'start': round(c_start, 3),
                                 'end': round(c_end, 3),
-                                'text': c_txt.strip()
+                                'text': clean_c
                             })
                         c_start = c_end
                     continue
