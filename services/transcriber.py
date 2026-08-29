@@ -209,6 +209,48 @@ class Transcriber:
                 result.extend(ocr_full)
                 result.sort(key=lambda x: x['start'])
 
+                # PASS 2: Quét mắt nhìn OCR đọc chữ in khung hình cho tất cả các khoảng trống thoại >= 0.8s
+        if _ocr_engine and os.path.exists(v_path) and len(result) >= 2:
+            ocr_recovered = []
+            for i in range(len(result) - 1):
+                curr_s = result[i]
+                next_s = result[i + 1]
+                gap_dur = next_s['start'] - curr_s['end']
+                if gap_dur >= 0.8:
+                    s_t = curr_s['end']
+                    e_t = next_s['start']
+                    sample_t = s_t + 0.4
+                    while sample_t < e_t:
+                        tmp_img = os.path.join(os.path.dirname(v_path), f"ocr_gap_{i}_{int(sample_t*10)}.jpg")
+                        cmd = f'ffmpeg -y -ss {sample_t:.2f} -i "{v_path}" -vframes 1 "{tmp_img}"'
+                        subprocess.run(cmd, shell=True, capture_output=True)
+                        if os.path.exists(tmp_img):
+                            try:
+                                ocr_res, _ = _ocr_engine(tmp_img)
+                                if ocr_res:
+                                    for item in ocr_res:
+                                        txt = item[1].strip()
+                                        score = item[2]
+                                        if score >= 0.70 and len(txt) >= 2 and not any(w in txt for w in ["动漫", "虚构", "架空", "@", "http", "制作"]):
+                                            if txt != curr_s['text'] and txt != next_s['text'] and not any(r['text'] == txt for r in ocr_recovered):
+                                                ocr_recovered.append({
+                                                    'start': round(sample_t, 3),
+                                                    'end': round(min(e_t - 0.05, sample_t + 1.6), 3),
+                                                    'text': txt
+                                                })
+                            except Exception:
+                                pass
+                            try:
+                                os.remove(tmp_img)
+                            except Exception:
+                                pass
+                        sample_t += 1.0
+
+            if ocr_recovered:
+                print(f"[Transcriber OCR Gap Sweep] Đã đọc chữ từ khung hình và bù đắp thành công {len(ocr_recovered)} câu thoại/chữ in trong các khoảng trống!")
+                result.extend(ocr_recovered)
+                result.sort(key=lambda x: x['start'])
+
         # Cập nhật số thứ tự index
         for idx, s in enumerate(result, 1):
             s['index'] = idx
