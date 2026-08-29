@@ -285,14 +285,17 @@ class Transcriber:
             result.sort(key=lambda x: x['start'])
 
                         
-        # Xác định đường dẫn video MP4 thực tế để chụp khung hình OCR (không dùng file audio.wav)
+        # Xác định chuẩn xác đường dẫn file video MP4 (không dùng file .wav)
         v_path = audio_path
-        if not v_path.lower().endswith(('.mp4', '.mkv', '.mov', '.avi', '.webm', '.flv')):
+        if v_path.lower().endswith('.wav') or not v_path.lower().endswith(('.mp4', '.mkv', '.mov', '.avi', '.webm', '.flv')):
+            possible_mp4 = os.path.splitext(audio_path)[0] + '.mp4'
             job_dir = os.path.dirname(audio_path)
             job_id = os.path.basename(job_dir)
             c1 = os.path.join("downloads", job_id, "local_video.mp4")
             c2 = os.path.join(os.getcwd(), "downloads", job_id, "local_video.mp4")
-            if os.path.exists(c1):
+            if os.path.exists(possible_mp4):
+                v_path = possible_mp4
+            elif os.path.exists(c1):
                 v_path = c1
             elif os.path.exists(c2):
                 v_path = c2
@@ -303,6 +306,7 @@ class Transcriber:
                     if m.lower().endswith(('.mp4', '.mkv', '.mov', '.avi', '.webm', '.flv')):
                         v_path = m
                         break
+        print(f"[Transcriber OCR Engine] Đường dẫn video chụp khung hình: {v_path}")
 
 # PASS 3.1: Nếu audio không nhận diện được (result rỗng hoặc chỉ có 1 đoạn), tự động chạy Full Video OCR trên toàn bộ video
         if _ocr_engine and os.path.exists(v_path) and len(result) <= 1:
