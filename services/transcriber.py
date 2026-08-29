@@ -259,7 +259,7 @@ class Transcriber:
                 try:
                     sub_segs, _ = self.model.transcribe(
                         audio_path,
-                        language=language,
+                        language=lang,
                         beam_size=10, temperature=[0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
                         best_of=10,
                         initial_prompt="以下是未识别的完整中文对话与旁白字幕：",
