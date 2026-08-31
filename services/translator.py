@@ -354,7 +354,7 @@ BẮT BUỘC TRẢ VỀ: Chỉ trả về duy nhất 1 JSON Array hợp lệ g�
                         continue
 
         # Lắp ráp kết quả cuối cùng theo đúng thứ tự
-                zh_map = {"嗯": "Ừm", "啊": "À", "哦": "Ồ", "呃": "Hả", "呀": "Nè", "哈": "Ha", "哇": "Oa", "唉": "Haizz", "喂": "Alo", "好的": "Được rồi"}
+        zh_map = {"嗯": "Ừm", "啊": "À", "哦": "Ồ", "呃": "Hả", "呀": "Nè", "哈": "Ha", "哇": "Oa", "唉": "Haizz", "喂": "Alo", "好的": "Được rồi"}
         for seg in segments:
             idx = seg["index"]
             curr_text = trans_results.get(idx, "").strip()
