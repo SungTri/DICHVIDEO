@@ -41,38 +41,56 @@ class Translator:
         "pt": "Portuguese", "it": "Italian", "th": "Thai", "ar": "Arabic",
     }
 
-    def _build_prompt(self, input_data, json_module, from_lang="en", context_prompt=None):
-        """Tạo prompt dịch thuật chuyên nghiệp 100% bảo toàn số lượng subtitle theo chuẩn cao cấp."""
+        def _build_prompt(self, input_data, json_module, from_lang="en", context_prompt=None):
+        """Tạo prompt dịch thuật chuyên nghiệp chuẩn lồng tiếng khớp thời lượng từng câu."""
         lang_name = self._LANG_NAMES.get(from_lang, from_lang.upper())
         
         context_str = ""
         if context_prompt and isinstance(context_prompt, str) and context_prompt.strip():
             context_str = f"\n- NGỮ CẢNH BỔ SUNG TỪ NGƯỜI DÙNG: {context_prompt.strip()}\n"
+
+        # Định dạng danh sách đầu vào có kèm mốc thời lượng và giới hạn số từ lồng tiếng
+        formatted_inputs = []
+        for s in input_data:
+            start_t = s.get('start', 0)
+            end_t = s.get('end', 0)
+            dur = max(0.5, round(end_t - start_t, 2)) if end_t > start_t else 2.0
+            # Tốc độ đọc tự nhiên tiếng Việt ~ 3.5 từ/giây
+            max_words = max(3, int(dur * 3.5))
+            formatted_inputs.append({
+                "index": s['index'],
+                "source_text": s.get('text', ''),
+                "time_limit_sec": dur,
+                "max_vietnamese_words": max_words
+            })
             
-        return f"""Bạn là AI chuyên gia biên dịch phụ đề video và phim ảnh từ {lang_name} sang Tiếng Việt.
+        return f"""Bạn là AI chuyên gia biên dịch và lồng tiếng phụ đề video phim ảnh từ {lang_name} sang Tiếng Việt.
 
 NHIỆM VỤ TỐI THƯỢNG:
-Dịch toàn bộ danh sách phụ đề đầu vào sang Tiếng Việt tự nhiên, lôi cuốn, chuẩn xác 100%.
+Dịch toàn bộ danh sách câu thoại đầu vào sang Tiếng Việt CÔ ĐỌNG, SÚC TÍCH, VỪA KHÍT THỜI LƯỢNG NÓI để giọng đọc TTS không bị nói quá dài đè lên câu sau.
 
 CÁC NGUYÊN TẮC BẮT BUỘC KHÔNG ĐƯỢC VI PHẠM:
 1. BẢO TOÀN 100% SỐ LƯỢNG ENTRY/INDEX:
-   - Số lượng entry đầu ra PHẢI BẰNG CHÍNH XÁC số lượng entry đầu vào (Input count = Output count).
+   - Số lượng câu đầu ra PHẢI BẰNG CHÍNH XÁC số lượng câu đầu vào (Input count = Output count).
    - Tuyệt đối không được bỏ sót, xóa bỏ, gộp hay chia nhỏ bất kỳ index nào.
-   - Các câu rất ngắn như tiếng cảm thán: "Ừ", "À", "Hả?", "Này!", "Ồ", "Ừm", "..." VẪN PHẢI GIỮ NGUYÊN VÀ DỊCH.
-2. TUYỆT ĐỐI KHÔNG TÓM TẮT:
-   - Không được lược bỏ vế câu, không gộp các câu có nội dung tương tự. Dịch đầy đủ 100% chi tiết.
-3. VĂN PHONG TỰ NHIÊN, SÚC TÍCH, CHUẨN LỒNG TIẾNG ĐIỆN ẢNH:
-   - Dịch trôi chảy, tự nhiên theo ngữ cảnh video/phim ảnh Việt Nam, xưng hô phù hợp, sửa lỗi chính tả phát âm STT.
-   - NGUYÊN TẮC CÔ ĐỌNG CHO LỒNG TIẾNG: Câu dịch Tiếng Việt PHẢI NGẮN GỌN, SÚC TÍCH, CÔ ĐỌNG, DỄ ĐỌC NHANH. Tránh dịch rườm rà dài dòng để giọng đọc TTS không bị nói quá dài đè lên câu sau.
+   - Các câu ngắn, tiếng cảm thán: "Ừ", "À", "Hả?", "Này!", "Ồ", "Ừm", "..." VẪN PHẢI GIỮ VÀ DỊCH.
+2. NGUYÊN TẮC CÔ ĐỌNG VỪA KHÍT THỜI GIAN LỒNG TIẾNG (DUBBING PACING):
+   - Bản dịch tiếng Việt BẮT BUỘC PHẢI NGẮN GỌN, SÚC TÍCH, DỄ ĐỌC NHANH, KHÔNG VƯỢT QUÁ số từ 'max_vietnamese_words'.
+   - Tuyệt đối KHÔNG dịch rườm rà, dài dòng, thêm thắt từ ngữ thừa thãi.
+   - Ví dụ:
+     * Gốc: "长相逆天性格文静" (1.5s - max 5 từ) ➔ Dịch: "Nhan sắc đỉnh, tính dịu dàng" (6 từ) (KHÔNG dịch dài: "Cô ấy có vẻ ngoài cực kỳ xinh đẹp và tính cách hiền thục").
+     * Gốc: "在家洗衣刷碗做饭全包" (1.8s - max 6 từ) ➔ Dịch: "Bao trọn việc nhà bếp núc" (6 từ).
+3. VĂN PHONG TỰ NHIÊN, CHUẨN ĐIỆN ẢNH:
+   - Dịch mượt mà, xưng hô phù hợp ngữ cảnh, sửa lỗi chính tả phát âm STT.
 4. MỖI BẢN DỊCH LÀ 1 DÒNG DUY NHẤT:
    - Không chèn ký tự xuống dòng (\n) trong trường text.
 5. DỊCH SẠCH 100% SANG TIẾNG VIỆT:
    - Tuyệt đối không để sót chữ {lang_name} gốc trong bản dịch.{context_str}
 
-Danh sách phụ đề đầu vào (JSON):
-{json_module.dumps(input_data, ensure_ascii=False, indent=2)}
+Danh sách phụ đề đầu vào:
+{json_module.dumps(formatted_inputs, ensure_ascii=False, indent=2)}
 
-BẮT BUỘC TRẢ VỀ: Chỉ trả về duy nhất 1 JSON Array hợp lệ gồm các object có đúng 2 key: "index" (int) và "text" (string, bản dịch tiếng Việt). Tuyệt đối không thêm lời giải thích hay bọc mã."""
+BẮT BUỘC TRẢ VỀ: Chỉ trả về duy nhất 1 JSON Array hợp lệ gồm các object có đúng 2 key: "index" (int) và "text" (string, bản dịch tiếng Việt súc tích ngắn gọn). Tuyệt đối không thêm lời giải thích hay bọc mã."""
 
     def _parse_api_response(self, raw_text, json_module):
         """Phân tích JSON trả về từ API, hỗ trợ cả dạng array và object."""
