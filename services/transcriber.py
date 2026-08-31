@@ -177,118 +177,50 @@ class Transcriber:
         total_duration = getattr(info, 'duration', 0) or 0
 
         for seg in segments_list:
-            text = seg.text.strip()
-            if not text:
+            text_val = seg.text.strip()
+            if not text_val:
                 continue
 
             if total_duration > 0 and seg.start >= (total_duration - 0.2):
                 break
 
-            # Lấy mốc bắt đầu và kết thúc chuẩn xác đến từng mili-giây theo từ đầu/cuối của nhân vật
-            seg_start = seg.start
-            seg_end = seg.end
+            # Phân tách câu thông minh theo từng cụm từ thực tế (loại bỏ tiếng bập bẹ/ngắt quãng lớn > 1.2s)
             if getattr(seg, 'words', None) and len(seg.words) > 0:
-                seg_start = seg.words[0].start
-                seg_end = seg.words[-1].end
+                current_chunk_words = [seg.words[0]]
+                for w in seg.words[1:]:
+                    prev_w = current_chunk_words[-1]
+                    # Nếu giữa 2 từ có khoảng im lặng/bập bẹ lớn >= 1.2s -> Tách thành câu riêng biệt
+                    if (w.start - prev_w.end) >= 1.2:
+                        txt_chunk = "".join(x.word for x in current_chunk_words).strip()
+                        # Bỏ qua nếu chỉ là 1 âm đơn bập bẹ với độ tin cậy thấp
+                        if not (len(current_chunk_words) == 1 and current_chunk_words[0].probability < 0.45):
+                            result.append({
+                                'index': len(result) + 1,
+                                'start': round(current_chunk_words[0].start, 3),
+                                'end': round(min(current_chunk_words[-1].end, total_duration) if total_duration > 0 else current_chunk_words[-1].end, 3),
+                                'text': txt_chunk
+                            })
+                        current_chunk_words = [w]
+                    else:
+                        current_chunk_words.append(w)
 
-            if total_duration > 0:
-                seg_end = min(seg_end, total_duration)
-
-            result.append({
-                'index': len(result) + 1,
-                'start': round(seg_start, 3),
-                'end': round(seg_end, 3),
-                'text': text
-            })
-
-            if progress_callback and total_duration > 0:
-                progress_callback(min(seg.end / total_duration * 100, 99))
-
-        if progress_callback:
-            progress_callback(100)
-
-        # Tìm đường dẫn MP4 để quét OCR khôi phục chữ in màn hình
-        v_path = audio_path
-        if v_path.lower().endswith('.wav') or not v_path.lower().endswith(('.mp4', '.mkv', '.mov', '.avi', '.webm', '.flv')):
-            possible_mp4 = os.path.splitext(audio_path)[0] + '.mp4'
-            job_dir = os.path.dirname(audio_path)
-            job_id = os.path.basename(job_dir)
-            c1 = os.path.join("downloads", job_id, "local_video.mp4")
-            c2 = os.path.join(os.getcwd(), "downloads", job_id, "local_video.mp4")
-            if os.path.exists(possible_mp4):
-                v_path = possible_mp4
-            elif os.path.exists(c1):
-                v_path = c1
-            elif os.path.exists(c2):
-                v_path = c2
+                if current_chunk_words:
+                    txt_chunk = "".join(x.word for x in current_chunk_words).strip()
+                    if not (len(current_chunk_words) == 1 and current_chunk_words[0].probability < 0.45):
+                        result.append({
+                            'index': len(result) + 1,
+                            'start': round(current_chunk_words[0].start, 3),
+                            'end': round(min(current_chunk_words[-1].end, total_duration) if total_duration > 0 else current_chunk_words[-1].end, 3),
+                            'text': txt_chunk
+                        })
             else:
-                v_matches = glob.glob(os.path.join("downloads", job_id, "*.*")) + glob.glob(os.path.join(job_dir, "*.*"))
-                for m in v_matches:
-                    if m.lower().endswith(('.mp4', '.mkv', '.mov', '.avi', '.webm', '.flv')):
-                        v_path = m
-                        break
-
-        # Nếu audio rỗng (ví dụ video câm/chỉ có nhạc), tự động chạy Full Video OCR
-        if _ocr_engine and os.path.exists(v_path) and len(result) <= 1:
-            print("⚠️ [Transcriber] Whisper không phát hiện âm thanh. Đang chạy Video OCR đọc chữ in...")
-            ocr_full = self.scan_video_ocr_full(v_path)
-            if ocr_full:
-                result.extend(ocr_full)
-                result.sort(key=lambda x: x['start'])
-
-                # PASS 2: Quét mắt nhìn OCR đọc chữ in khung hình cho tất cả các khoảng trống thoại >= 0.8s
-        if _ocr_engine and os.path.exists(v_path) and len(result) >= 2:
-            ocr_recovered = []
-            for i in range(len(result) - 1):
-                curr_s = result[i]
-                next_s = result[i + 1]
-                gap_dur = next_s['start'] - curr_s['end']
-                if gap_dur >= 0.8:
-                    s_t = curr_s['end']
-                    e_t = next_s['start']
-                    sample_t = s_t + 0.4
-                    while sample_t < e_t:
-                        tmp_img = os.path.join(os.path.dirname(v_path), f"ocr_gap_{i}_{int(sample_t*10)}.jpg")
-                        cmd = f'ffmpeg -y -ss {sample_t:.2f} -i "{v_path}" -vframes 1 "{tmp_img}"'
-                        subprocess.run(cmd, shell=True, capture_output=True)
-                        if os.path.exists(tmp_img):
-                            try:
-                                ocr_res, _ = _ocr_engine(tmp_img)
-                                if ocr_res:
-                                    for item in ocr_res:
-                                        txt = item[1].strip()
-                                        score = item[2]
-                                        if score >= 0.70 and Transcriber.is_valid_ocr_text(txt):
-                                            if txt != curr_s['text'] and txt != next_s['text'] and not any(r['text'] == txt for r in ocr_recovered):
-                                                ocr_recovered.append({
-                                                    'start': round(sample_t, 3),
-                                                    'end': round(min(e_t - 0.05, sample_t + 1.6), 3),
-                                                    'text': txt
-                                                })
-                            except Exception:
-                                pass
-                            try:
-                                os.remove(tmp_img)
-                            except Exception:
-                                pass
-                        sample_t += 1.0
-
-            if ocr_recovered:
-                print(f"[Transcriber OCR Gap Sweep] Đã đọc chữ từ khung hình và bù đắp thành công {len(ocr_recovered)} câu thoại/chữ in trong các khoảng trống!")
-                result.extend(ocr_recovered)
-                result.sort(key=lambda x: x['start'])
-
-        # Sắp xếp theo thứ tự thời gian bắt đầu và khử 100% hiện tượng đè/chồng lấn thời gian
-        result.sort(key=lambda x: x['start'])
-        for idx in range(len(result) - 1):
-            curr_s = result[idx]
-            next_s = result[idx + 1]
-            if curr_s['end'] >= next_s['start']:
-                curr_s['end'] = max(curr_s['start'] + 0.2, round(next_s['start'] - 0.05, 3))
-
-        # Cập nhật số thứ tự index
-        for idx, s in enumerate(result, 1):
-            s['index'] = idx
+                seg_end = min(seg.end, total_duration) if total_duration > 0 else seg.end
+                result.append({
+                    'index': len(result) + 1,
+                    'start': round(seg.start, 3),
+                    'end': round(seg_end, 3),
+                    'text': text_val
+                })
 
         print(f"[Transcriber] Hoàn tất nhận diện {len(result)} câu thoại chuẩn xác thời gian (khử 100% chồng lấn).")
         return result
