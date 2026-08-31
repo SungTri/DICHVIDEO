@@ -278,22 +278,60 @@ class Transcriber:
     @staticmethod
     def generate_srt(segments: list, output_path: str) -> str:
         """
-        Tạo file phụ đề SRT chuẩn 1 dải duy nhất, khử 100% đè thời gian (Single-Track CapCut Enforced).
+        Tạo file phụ đề SRT chuẩn 1 dải duy nhất, khử 100% chồng lấn/trùng mốc (Strict Monotonic Single-Track).
         """
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-        # Lọc các đoạn hợp lệ và sắp xếp theo mốc bắt đầu
-        segs_clean = sorted([dict(s) for s in segments if s.get('text', '').strip()], key=lambda x: x['start'])
+        if not segments:
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write("")
+            return output_path
 
-        # Khử triệt để 100% chồng lấn thời gian giữa các câu liên tiếp
-        for idx in range(len(segs_clean) - 1):
-            curr_s = segs_clean[idx]
-            next_s = segs_clean[idx + 1]
-            if curr_s['end'] >= next_s['start']:
-                curr_s['end'] = max(curr_s['start'] + 0.2, round(next_s['start'] - 0.05, 3))
+        # 1. Sắp xếp chặt chẽ theo mốc bắt đầu, ưu tiên câu dài hơn nếu cùng mốc
+        raw = sorted([dict(s) for s in segments if s.get('text', '').strip()], 
+                     key=lambda x: (x['start'], -len(str(x.get('text', '')))))
+
+        # 2. Khử các đoạn trùng lặp nội dung con ở cùng một mốc thời gian (<= 0.6s)
+        deduped = []
+        for s in raw:
+            t_txt = str(s['text']).strip()
+            t_start = s['start']
+            is_dup = False
+            for existing in deduped[-5:]:
+                e_txt = str(existing['text']).strip()
+                e_start = existing['start']
+                if abs(t_start - e_start) <= 0.6:
+                    if t_txt == e_txt or t_txt in e_txt or e_txt in t_txt:
+                        if len(t_txt) > len(e_txt):
+                            existing['text'] = t_txt
+                        is_dup = True
+                        break
+            if not is_dup:
+                deduped.append(s)
+
+        # 3. Chuỗi thời gian tuyến tính đơn điệu bắt buộc (Đảm bảo 100% không đè timestamp)
+        sequenced = []
+        for s in deduped:
+            start_t = s['start']
+            end_t = s['end']
+            
+            if sequenced:
+                prev_end = sequenced[-1]['end']
+                if start_t <= prev_end + 0.04:
+                    start_t = round(prev_end + 0.05, 3)
+                    
+            if end_t <= start_t + 0.3:
+                end_t = round(start_t + 0.6, 3)
+                
+            sequenced.append({
+                'index': len(sequenced) + 1,
+                'start': round(start_t, 3),
+                'end': round(end_t, 3),
+                'text': str(s['text']).strip()
+            })
 
         with open(output_path, 'w', encoding='utf-8') as f:
-            for i, seg in enumerate(segs_clean, 1):
+            for i, seg in enumerate(sequenced, 1):
                 start_ts = Transcriber.format_timestamp(seg['start'])
                 end_ts = Transcriber.format_timestamp(seg['end'])
                 safe_text = str(seg['text']).replace('\r\n', '\n').strip()
@@ -302,7 +340,7 @@ class Transcriber:
                 f.write(f"{start_ts} --> {end_ts}\n")
                 f.write(f"{safe_text}\n\n")
 
-        print(f"[Transcriber] Đã tạo file SRT chuẩn 1 dải duy nhất: {output_path}")
+        print(f"[Transcriber] Đã tạo file SRT chuẩn 1 dải thẳng tắp CapCut (0 overlap): {output_path}")
         return output_path
 
     @staticmethod
