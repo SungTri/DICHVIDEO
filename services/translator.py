@@ -42,7 +42,7 @@ class Translator:
     }
 
     def _build_prompt(self, input_data, json_module, from_lang="en", context_prompt=None):
-        """Tạo prompt dịch thuật chuyên nghiệp chuẩn lồng tiếng khớp thời lượng từng câu."""
+        """Tạo prompt dịch thuật chuyên nghiệp chuẩn lồng tiếng khớp thời lượng và sửa lỗi đồng âm STT."""
         lang_name = self._LANG_NAMES.get(from_lang, from_lang.upper())
         
         context_str = ""
@@ -67,24 +67,24 @@ class Translator:
         return f"""Bạn là AI chuyên gia biên dịch và lồng tiếng phụ đề video phim ảnh từ {lang_name} sang Tiếng Việt.
 
 NHIỆM VỤ TỐI THƯỢNG:
-Dịch toàn bộ danh sách câu thoại đầu vào sang Tiếng Việt CÔ ĐỌNG, SÚC TÍCH, VỪA KHÍT THỜI LƯỢNG NÓI để giọng đọc TTS không bị nói quá dài đè lên câu sau.
+Dịch toàn bộ danh sách câu thoại đầu vào sang Tiếng Việt CÔ ĐỌNG, SÚC TÍCH, VỪA KHÍT THỜI LƯỢNG NÓI VÀ CHUẨN XÁC THEO MẠCH CỐT TRUYỆN THỰC TẾ.
 
 CÁC NGUYÊN TẮC BẮT BUỘC KHÔNG ĐƯỢC VI PHẠM:
 1. BẢO TOÀN 100% SỐ LƯỢNG ENTRY/INDEX:
    - Số lượng câu đầu ra PHẢI BẰNG CHÍNH XÁC số lượng câu đầu vào (Input count = Output count).
    - Tuyệt đối không được bỏ sót, xóa bỏ, gộp hay chia nhỏ bất kỳ index nào.
    - Các câu ngắn, tiếng cảm thán: "Ừ", "À", "Hả?", "Này!", "Ồ", "Ừm", "..." VẪN PHẢI GIỮ VÀ DỊCH.
-2. NGUYÊN TẮC CÔ ĐỌNG VỪA KHÍT THỜI GIAN LỒNG TIẾNG (DUBBING PACING):
+2. TỰ ĐỘNG SỬA LỖI ĐỒNG ÂM NHẬN DIỆN GIỌNG NÓI (STT PHONETIC CORRECTION):
+   - Quá trình nhận diện âm thanh STT tiếng Trung từ video thực tế có thể nghe nhầm các từ đồng âm (ví dụ: nghe nhầm '躲雨' [trú mưa/trốn mưa] thành '夺鱼' [cá], '猫咪' thành '毛衣'...).
+   - AI PHẢI PHÂN TÍCH TOÀN BỘ MẠCH CÂU CHUYỆN LIÊN KẾT GIỮA CÁC CÂU LIÊN TIẾP để tự động sửa các lỗi đồng âm vô lý về đúng nghĩa logic của câu chuyện thực tế (ví dụ: con vật bị ướt chạy vào nhà ➔ nghĩa đúng là 'trốn mưa/trú mưa', tuyệt đối không dịch máy móc thành 'con cá').
+3. NGUYÊN TẮC CÔ ĐỌNG VỪA KHÍT THỜI GIAN LỒNG TIẾNG (DUBBING PACING):
    - Bản dịch tiếng Việt BẮT BUỘC PHẢI NGẮN GỌN, SÚC TÍCH, DỄ ĐỌC NHANH, KHÔNG VƯỢT QUÁ số từ 'max_vietnamese_words'.
    - Tuyệt đối KHÔNG dịch rườm rà, dài dòng, thêm thắt từ ngữ thừa thãi.
-   - Ví dụ:
-     * Gốc: "长相逆天性格文静" (1.5s - max 5 từ) ➔ Dịch: "Nhan sắc đỉnh, tính dịu dàng" (6 từ) (KHÔNG dịch dài: "Cô ấy có vẻ ngoài cực kỳ xinh đẹp và tính cách hiền thục").
-     * Gốc: "在家洗衣刷碗做饭全包" (1.8s - max 6 từ) ➔ Dịch: "Bao trọn việc nhà bếp núc" (6 từ).
-3. VĂN PHONG TỰ NHIÊN, CHUẨN ĐIỆN ẢNH:
+4. VĂN PHONG TỰ NHIÊN, CHUẨN ĐIỆN ẢNH:
    - Dịch mượt mà, xưng hô phù hợp ngữ cảnh, sửa lỗi chính tả phát âm STT.
-4. MỖI BẢN DỊCH LÀ 1 DÒNG DUY NHẤT:
+5. MỖI BẢN DỊCH LÀ 1 DÒNG DUY NHẤT:
    - Không chèn ký tự xuống dòng (\n) trong trường text.
-5. DỊCH SẠCH 100% SANG TIẾNG VIỆT:
+6. DỊCH SẠCH 100% SANG TIẾNG VIỆT:
    - Tuyệt đối không để sót chữ {lang_name} gốc trong bản dịch.{context_str}
 
 Danh sách phụ đề đầu vào:
