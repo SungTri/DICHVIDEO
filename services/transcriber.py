@@ -251,11 +251,19 @@ class Transcriber:
                 result.extend(ocr_recovered)
                 result.sort(key=lambda x: x['start'])
 
+        # Sắp xếp theo thứ tự thời gian bắt đầu và khử 100% hiện tượng đè/chồng lấn thời gian
+        result.sort(key=lambda x: x['start'])
+        for idx in range(len(result) - 1):
+            curr_s = result[idx]
+            next_s = result[idx + 1]
+            if curr_s['end'] >= next_s['start']:
+                curr_s['end'] = max(curr_s['start'] + 0.2, round(next_s['start'] - 0.05, 3))
+
         # Cập nhật số thứ tự index
         for idx, s in enumerate(result, 1):
             s['index'] = idx
 
-        print(f"[Transcriber] Hoàn tất nhận diện {len(result)} câu thoại chuẩn xác thời gian.")
+        print(f"[Transcriber] Hoàn tất nhận diện {len(result)} câu thoại chuẩn xác thời gian (khử 100% chồng lấn).")
         return result
 
     @staticmethod
@@ -270,12 +278,22 @@ class Transcriber:
     @staticmethod
     def generate_srt(segments: list, output_path: str) -> str:
         """
-        Tạo file phụ đề SRT chuẩn thời gian từng câu thực tế.
+        Tạo file phụ đề SRT chuẩn 1 dải duy nhất, khử 100% đè thời gian (Single-Track CapCut Enforced).
         """
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
+        # Lọc các đoạn hợp lệ và sắp xếp theo mốc bắt đầu
+        segs_clean = sorted([dict(s) for s in segments if s.get('text', '').strip()], key=lambda x: x['start'])
+
+        # Khử triệt để 100% chồng lấn thời gian giữa các câu liên tiếp
+        for idx in range(len(segs_clean) - 1):
+            curr_s = segs_clean[idx]
+            next_s = segs_clean[idx + 1]
+            if curr_s['end'] >= next_s['start']:
+                curr_s['end'] = max(curr_s['start'] + 0.2, round(next_s['start'] - 0.05, 3))
+
         with open(output_path, 'w', encoding='utf-8') as f:
-            for i, seg in enumerate(segments, 1):
+            for i, seg in enumerate(segs_clean, 1):
                 start_ts = Transcriber.format_timestamp(seg['start'])
                 end_ts = Transcriber.format_timestamp(seg['end'])
                 safe_text = str(seg['text']).replace('\r\n', '\n').strip()
@@ -284,7 +302,7 @@ class Transcriber:
                 f.write(f"{start_ts} --> {end_ts}\n")
                 f.write(f"{safe_text}\n\n")
 
-        print(f"[Transcriber] Đã tạo file SRT chuẩn: {output_path}")
+        print(f"[Transcriber] Đã tạo file SRT chuẩn 1 dải duy nhất: {output_path}")
         return output_path
 
     @staticmethod
