@@ -62,6 +62,23 @@ class Transcriber:
                 print(f"[Transcriber] Model '{model_size}' đã sẵn sàng trên CPU!")
         return self._models[model_size]
 
+    @staticmethod
+    def is_valid_ocr_text(txt: str) -> bool:
+        """Kiểm tra và lọc sạch rác OCR (số, đồng hồ, watermark, ký hiệu vô nghĩa)."""
+        clean = txt.strip()
+        if len(clean) < 2:
+            return False
+        # Bỏ qua nếu chỉ toàn là số, dấu chấm, dấu phẩy, ký hiệu (như 0.0, 123, 1.5, 00:15...)
+        if re.match(r"^[\d\.\,\:\-\s\%\/\\_\(\)\[\]]+$", clean):
+            return False
+        # Phải chứa ít nhất 1 chữ Hán hoặc chữ cái
+        if not re.search(r"[\u4e00-\u9fff\w]", clean):
+            return False
+        # Bỏ qua watermark và các từ rác bản quyền
+        if any(w in clean for w in ["动漫", "虚构", "架空", "@", "http", "制作", "bilibili", "douyin", "kuaishou", "快手", "抖音", "出品"]):
+            return False
+        return True
+
     def scan_video_ocr_full(self, v_path: str) -> list:
         if not _ocr_engine or not os.path.exists(v_path):
             return []
@@ -90,7 +107,7 @@ class Transcriber:
                         for item in ocr_res:
                             txt = item[1].strip()
                             score = item[2]
-                            if score >= 0.70 and len(txt) >= 2 and not any(w in txt for w in ["动漫", "虚构", "架空", "@", "http", "制作"]):
+                            if score >= 0.70 and Transcriber.is_valid_ocr_text(txt):
                                 if not any(r['text'] == txt for r in ocr_full):
                                     ocr_full.append({
                                         'index': len(ocr_full) + 1,
@@ -231,7 +248,7 @@ class Transcriber:
                                     for item in ocr_res:
                                         txt = item[1].strip()
                                         score = item[2]
-                                        if score >= 0.70 and len(txt) >= 2 and not any(w in txt for w in ["动漫", "虚构", "架空", "@", "http", "制作"]):
+                                        if score >= 0.70 and Transcriber.is_valid_ocr_text(txt):
                                             if txt != curr_s['text'] and txt != next_s['text'] and not any(r['text'] == txt for r in ocr_recovered):
                                                 ocr_recovered.append({
                                                     'start': round(sample_t, 3),
