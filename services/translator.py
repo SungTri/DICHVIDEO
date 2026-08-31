@@ -41,7 +41,7 @@ class Translator:
         "pt": "Portuguese", "it": "Italian", "th": "Thai", "ar": "Arabic",
     }
 
-        def _build_prompt(self, input_data, json_module, from_lang="en", context_prompt=None):
+    def _build_prompt(self, input_data, json_module, from_lang="en", context_prompt=None):
         """Tạo prompt dịch thuật chuyên nghiệp chuẩn lồng tiếng khớp thời lượng từng câu."""
         lang_name = self._LANG_NAMES.get(from_lang, from_lang.upper())
         
