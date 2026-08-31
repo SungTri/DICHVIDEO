@@ -61,8 +61,9 @@ CÁC NGUYÊN TẮC BẮT BUỘC KHÔNG ĐƯỢC VI PHẠM:
    - Các câu rất ngắn như tiếng cảm thán: "Ừ", "À", "Hả?", "Này!", "Ồ", "Ừm", "..." VẪN PHẢI GIỮ NGUYÊN VÀ DỊCH.
 2. TUYỆT ĐỐI KHÔNG TÓM TẮT:
    - Không được lược bỏ vế câu, không gộp các câu có nội dung tương tự. Dịch đầy đủ 100% chi tiết.
-3. VĂN PHONG TỰ NHIÊN, CHUẨN ĐIỆN ẢNH:
-   - Dịch trôi chảy theo ngữ cảnh video/phim ảnh Việt Nam, xưng hô phù hợp, sửa lỗi chính tả phát âm STT.
+3. VĂN PHONG TỰ NHIÊN, SÚC TÍCH, CHUẨN LỒNG TIẾNG ĐIỆN ẢNH:
+   - Dịch trôi chảy, tự nhiên theo ngữ cảnh video/phim ảnh Việt Nam, xưng hô phù hợp, sửa lỗi chính tả phát âm STT.
+   - NGUYÊN TẮC CÔ ĐỌNG CHO LỒNG TIẾNG: Câu dịch Tiếng Việt PHẢI NGẮN GỌN, SÚC TÍCH, CÔ ĐỌNG, DỄ ĐỌC NHANH. Tránh dịch rườm rà dài dòng để giọng đọc TTS không bị nói quá dài đè lên câu sau.
 4. MỖI BẢN DỊCH LÀ 1 DÒNG DUY NHẤT:
    - Không chèn ký tự xuống dòng (\n) trong trường text.
 5. DỊCH SẠCH 100% SANG TIẾNG VIỆT:

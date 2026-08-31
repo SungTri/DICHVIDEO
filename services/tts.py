@@ -197,19 +197,20 @@ class TTSService:
                     async with sem:
                         await self.generate_speech(text, tts_file, voice)
 
-                # Kiểm tra độ dài bằng ffprobe
+                # Kiểm tra độ dài file TTS thực tế bằng ffprobe
                 tts_duration = await asyncio.to_thread(self._get_audio_duration, tts_file)
-                seg_duration = seg['end'] - seg['start']
-
-                speed_factor = voice_speed
-                adjusted_duration = tts_duration / speed_factor
                 
-                if adjusted_duration > seg_duration > 0.5:
-                    additional_speed = adjusted_duration / seg_duration
-                    speed_factor = speed_factor * additional_speed
-                    speed_factor = min(speed_factor, 2.5)
-                    if abs(speed_factor - voice_speed) <= 0.05:
-                        speed_factor = voice_speed
+                # Tính toán khoảng thời gian cho phép phát trước khi câu kế tiếp bắt đầu
+                next_start = segments[i + 1]['start'] if i + 1 < len(segments) else seg['end'] + 3.0
+                avail_window = max(0.5, next_start - seg['start'] - 0.08) # Dành 0.08s ngắt nhịp thở tự nhiên
+                
+                speed_factor = voice_speed
+                curr_dur = tts_duration / speed_factor
+
+                # Nếu thời lượng đọc dài hơn khoảng trống tới câu sau, tự động tăng tốc thông minh để nói xong TRƯỚC câu sau
+                if curr_dur > avail_window:
+                    speed_factor = max(voice_speed, tts_duration / avail_window)
+                    speed_factor = min(speed_factor, 2.2) # Tối đa 2.2x để giọng vẫn tự nhiên, rõ chữ
 
                 completed_count += 1
                 if progress_callback:
