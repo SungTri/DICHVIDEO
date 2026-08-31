@@ -141,7 +141,9 @@ class Transcriber:
                 beam_size=5,
                 language=lang,
                 condition_on_previous_text=True,
-                vad_filter=False,
+                vad_filter=True,
+                vad_parameters=dict(min_silence_duration_ms=400, speech_pad_ms=150),
+                word_timestamps=True,
                 no_speech_threshold=0.6
             )
             segments_list = list(segments_gen)
@@ -182,11 +184,19 @@ class Transcriber:
             if total_duration > 0 and seg.start >= (total_duration - 0.2):
                 break
 
-            seg_end = min(seg.end, total_duration) if total_duration > 0 else seg.end
+            # Lấy mốc bắt đầu và kết thúc chuẩn xác đến từng mili-giây theo từ đầu/cuối của nhân vật
+            seg_start = seg.start
+            seg_end = seg.end
+            if getattr(seg, 'words', None) and len(seg.words) > 0:
+                seg_start = seg.words[0].start
+                seg_end = seg.words[-1].end
+
+            if total_duration > 0:
+                seg_end = min(seg_end, total_duration)
 
             result.append({
                 'index': len(result) + 1,
-                'start': round(seg.start, 3),
+                'start': round(seg_start, 3),
                 'end': round(seg_end, 3),
                 'text': text
             })
