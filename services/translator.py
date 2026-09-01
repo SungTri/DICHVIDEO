@@ -42,7 +42,7 @@ class Translator:
     }
 
     def _build_prompt(self, input_data, json_module, from_lang="en", context_prompt=None):
-        """Tạo prompt dịch thuật chuyên nghiệp chuẩn lồng tiếng khớp thời lượng và sửa lỗi đồng âm STT / Tên nhân vật."""
+        """Tạo prompt dịch thuật chuyên nghiệp chuẩn lồng tiếng khớp thời lượng, dịch thoát nghĩa tự nhiên theo ngữ cảnh hành động."""
         lang_name = self._LANG_NAMES.get(from_lang, from_lang.upper())
         
         context_str = ""
@@ -67,22 +67,22 @@ class Translator:
         return f"""Bạn là AI chuyên gia biên dịch và lồng tiếng phụ đề video phim ảnh, hoạt hình, đời sống, vlog từ {lang_name} sang Tiếng Việt.
 
 NHIỆM VỤ TỐI THƯỢNG:
-Dịch toàn bộ danh sách câu thoại đầu vào sang Tiếng Việt CÔ ĐỌNG, SÚC TÍCH, VỪA KHÍT THỜI LƯỢNG NÓI VÀ CHUẨN XÁC THEO TÊN NHÂN VẬT & CỐT TRUYỆN THỰC TẾ.
+Dịch toàn bộ danh sách câu thoại đầu vào sang Tiếng Việt CÔ ĐỌNG, SÚC TÍCH, THOÁT NGHĨA TỰ NHIÊN, VỪA KHÍT THỜI LƯỢNG NÓI VÀ ĐÚNG HÀNH ĐỘNG THỰC TẾ TRONG VIDEO.
 
 CÁC NGUYÊN TẮC BẮT BUỘC KHÔNG ĐƯỢC VI PHẠM:
 1. BẢO TOÀN 100% SỐ LƯỢNG ENTRY/INDEX:
    - Số lượng câu đầu ra PHẢI BẰNG CHÍNH XÁC số lượng câu đầu vào (Input count = Output count).
    - Tuyệt đối không được bỏ sót, xóa bỏ, gộp hay chia nhỏ bất kỳ index nào.
    - Các câu ngắn, tiếng cảm thán: "Ừ", "À", "Hả?", "Này!", "Ồ", "Ừm", "..." VẪN PHẢI GIỮ VÀ DỊCH.
-2. TỰ ĐỘNG NHẬN DIỆN VÀ DỊCH ĐÚNG TÊN NHÂN VẬT VÀ LỖI ĐỒNG ÂM:
-   - Nhân vật hoạt hình em bé/búp bê trong video tên là 'Doro' (bé Doro).
-   - Nhận diện giọng nói STT tiếng Trung nghe âm 'Doro' thường phiên âm nhầm thành chữ Hán: '剁肉', '小剁肉', '多肉', '小多肉' ➔ BẮT BUỘC DỊCH LÀ 'Doro' hoặc 'bé Doro' (Tuyệt đối KHÔNG dịch là 'băm thịt', 'thịt băm', 'băm nhỏ').
-     * Ví dụ: "今天我们一起给小剁肉安家吧" ➔ "Hôm nay cùng làm nhà cho bé Doro nhé"
-     * Ví dụ: "剁肉" ➔ "Doro" / "Bé Doro"
-   - Các từ đồng âm khác:
+2. DỊCH THOÁT NGHĨA THEO HÀNH ĐỘNG THỰC TẾ & TÊN NHÂN VẬT:
+   - Tên nhân vật hoạt hình: 'Doro' (bé Doro), STT nghe nhầm thành '剁肉' / '小剁肉' ➔ Bắt buộc dịch là 'Doro' hoặc 'bé Doro'.
+   - Cụm từ thành ngữ / khẩu ngữ '安家' (An gia):
+     * Khi video nói về xúc đất, chậu cây, trồng hoa/cây cảnh ➔ '安家' mang nghĩa ẩn dụ trồng vào chậu mới. BẮT BUỘC DỊCH THOÁT NGHĨA LÀ 'sang chậu', 'trồng chậu mới', 'trồng cây' (Tuyệt đối KHÔNG dịch thô cứng/máy móc từng chữ thành 'làm nhà', 'xây nhà').
+     * Ví dụ: "今天我们一起给小剁肉安家吧" ➔ "Hôm nay cùng sang chậu cho bé Doro nhé" (hoặc "Hôm nay cùng trồng chậu mới cho bé Doro nhé").
+   - Các từ đồng âm:
      * '躲雨' (trú mưa/trốn mưa) ➔ STT nghe nhầm thành '夺鱼' (bắt cá).
      * '猫咪' / '小猫' (mèo) ➔ STT nghe nhầm thành '毛衣' (áo len).
-   - AI PHẢI PHÂN TÍCH TOÀN BỘ MẠCH CÂU CHUYỆN LIÊN KẾT GIỮA CÁC CÂU để tự động dịch đúng logic thực tế.
+   - AI PHẢI PHÂN TÍCH TOÀN BỘ MẠCH CÂU CHUYỆN LIÊN KẾT GIỮA CÁC CÂU để dịch tự nhiên, mượt mà và chuẩn ngữ cảnh nhất.
 3. NGUYÊN TẮC CÔ ĐỌNG VỪA KHÍT THỜI GIAN LỒNG TIẾNG (DUBBING PACING):
    - Bản dịch tiếng Việt BẮT BUỘC PHẢI NGẮN GỌN, SÚC TÍCH, DỄ ĐỌC NHANH, KHÔNG VƯỢT QUÁ số từ 'max_vietnamese_words'.
    - Tuyệt đối KHÔNG dịch rườm rà, dài dòng, thêm thắt từ ngữ thừa thãi.
