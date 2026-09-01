@@ -42,12 +42,18 @@ class Translator:
     }
 
     def _build_prompt(self, input_data, json_module, from_lang="en", context_prompt=None):
-        """Tạo prompt dịch thuật chuyên nghiệp chuẩn lồng tiếng khớp thời lượng, dịch thoát nghĩa tự nhiên theo mạch cốt truyện."""
+        """Tạo prompt dịch thuật chuyên nghiệp với cơ chế VIP User Context Priority & Holistic Storyline."""
         lang_name = self._LANG_NAMES.get(from_lang, from_lang.upper())
         
-        context_str = ""
+        vip_context_box = ""
         if context_prompt and isinstance(context_prompt, str) and context_prompt.strip():
-            context_str = f"\n- NGỮ CẢNH BỔ SUNG TỪ NGƯỜI DÙNG: {context_prompt.strip()}\n"
+            vip_context_box = f"""
+================================================================================
+⭐ CHỈ THỊ KỊCH BẢN & YÊU CẦU ĐẶC BIỆT TỪ NGƯỜI DÙNG (ƯU TIÊN TUYỆT ĐỐI SỐ 1):
+{context_prompt.strip()}
+👉 BẮT BUỘC TUÂN THỦ 100%: Mọi tên nhân vật, đại từ xưng hô, bối cảnh hành động và thuật ngữ do người dùng chỉ định ở trên PHẢI ĐƯỢC ƯU TIÊN CAO NHẤT VÀ GHI ĐÈ LÊN MỌI SUY ĐOÁN KHÁC CỦA AI. Nếu STT tiếng Trung có nhận diện sai lệch từ đồng âm, AI PHẢI BẺ VỀ ĐÚNG KỊCH BẢN CỦA NGƯỜI DÙNG.
+================================================================================
+"""
 
         # Định dạng danh sách đầu vào có kèm mốc thời lượng và giới hạn số từ lồng tiếng
         formatted_inputs = []
@@ -65,7 +71,7 @@ class Translator:
             })
             
         return f"""Bạn là AI chuyên gia biên dịch và lồng tiếng phụ đề video phim ảnh, hoạt hình, đời sống, vlog từ {lang_name} sang Tiếng Việt.
-
+{vip_context_box}
 NHIỆM VỤ TỐI THƯỢNG:
 Dịch toàn bộ danh sách câu thoại đầu vào sang Tiếng Việt CÔ ĐỌNG, SÚC TÍCH, THOÁT NGHĨA TỰ NHIÊN, VỪA KHÍT THỜI LƯỢNG NÓI VÀ CHUẨN XÁC 100% THEO MẠCH CỐT TRUYỆN TOÀN BÀI.
 
@@ -74,7 +80,7 @@ CÁC NGUYÊN TẮC BẮT BUỘC KHÔNG ĐƯỢC VI PHẠM:
    - Số lượng câu đầu ra PHẢI BẰNG CHÍNH XÁC số lượng câu đầu vào (Input count = Output count).
    - Tuyệt đối không được bỏ sót, xóa bỏ, gộp hay chia nhỏ bất kỳ index nào.
    - Các câu ngắn, tiếng cảm thán: "Ừ", "À", "Hả?", "Này!", "Ồ", "Ừm", "..." VẪN PHẢI GIỮ VÀ DỊCH.
-2. PHÂN TÍCH MẠCH CÂU CHUYỆN LIÊN HOÀN (HOLISTIC STORYLINE CONTEXT):
+2. PHÂN TÍCH MẠCH CÂU CHUYỆN LIÊN HOÀN & SỬA LỖI ĐỒNG ÂM:
    - Nhận diện giọng nói STT tiếng Trung có thể nghe nhầm các từ đồng âm theo chủ đề đời sống/làm vườn/thú cưng:
      * Video trồng cây, xúc đất vào chậu: '多肉' / '小多肉' (cây sen đá / bé sen đá mọng nước) hay bị STT nghe nhầm thành '剁肉' / '小剁肉'.
      * Cụm từ '安家' (An gia): Nghĩa ẩn dụ là 'sang chậu / trồng chậu mới' cho cây/hoa (Tuyệt đối KHÔNG dịch máy móc thành 'làm nhà / xây nhà').
@@ -82,7 +88,7 @@ CÁC NGUYÊN TẮC BẮT BUỘC KHÔNG ĐƯỢC VI PHẠM:
      * '一点哦' / '小心点': Nhẹ tay thôi nhé / Cẩn thận nhé.
      * '躲雨' (trú mưa/trốn mưa) ➔ STT nghe nhầm thành '夺鱼' (bắt cá).
      * '猫咪' / '小猫' (mèo) ➔ STT nghe nhầm thành '毛衣' (áo len).
-   - AI PHẢI LIÊN KẾT TẤT CẢ CÁC CÂU TRONG BATCH ĐỂ CHO RA BẢN DỊCH HỢP LOGIC, TỰ NHIÊN NHẤT (ví dụ: "Hôm nay cùng sang chậu cho bé sen đá nhé", "Sen đá nè", "Nhẹ tay thôi nhé", "Sen đá non nớt lắm đấy", "Cậu chu đáo thật đấy").
+   - AI PHẢI LIÊN KẾT TẤT CẢ CÁC CÂU TRONG BATCH ĐỂ CHO RA BẢN DỊCH HỢP LOGIC, TỰ NHIÊN NHẤT.
 3. NGUYÊN TẮC CÔ ĐỌNG VỪA KHÍT THỜI GIAN LỒNG TIẾNG (DUBBING PACING):
    - Bản dịch tiếng Việt BẮT BUỘC PHẢI NGẮN GỌN, SÚC TÍCH, DỄ ĐỌC NHANH, KHÔNG VƯỢT QUÁ số từ 'max_vietnamese_words'.
    - Tuyệt đối KHÔNG dịch rườm rà, dài dòng, thêm thắt từ ngữ thừa thãi.
@@ -91,7 +97,7 @@ CÁC NGUYÊN TẮC BẮT BUỘC KHÔNG ĐƯỢC VI PHẠM:
 5. MỖI BẢN DỊCH LÀ 1 DÒNG DUY NHẤT:
    - Không chèn ký tự xuống dòng (\n) trong trường text.
 6. DỊCH SẠCH 100% SANG TIẾNG VIỆT:
-   - Tuyệt đối không để sót chữ {lang_name} gốc trong bản dịch.{context_str}
+   - Tuyệt đối không để sót chữ {lang_name} gốc trong bản dịch.
 
 Danh sách phụ đề đầu vào:
 {json_module.dumps(formatted_inputs, ensure_ascii=False, indent=2)}
