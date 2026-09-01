@@ -42,7 +42,7 @@ class Translator:
     }
 
     def _build_prompt(self, input_data, json_module, from_lang="en", context_prompt=None):
-        """Tạo prompt dịch thuật chuyên nghiệp chuẩn lồng tiếng khớp thời lượng, dịch thoát nghĩa tự nhiên theo ngữ cảnh hành động."""
+        """Tạo prompt dịch thuật chuyên nghiệp chuẩn lồng tiếng khớp thời lượng, dịch thoát nghĩa tự nhiên theo mạch cốt truyện."""
         lang_name = self._LANG_NAMES.get(from_lang, from_lang.upper())
         
         context_str = ""
@@ -67,22 +67,22 @@ class Translator:
         return f"""Bạn là AI chuyên gia biên dịch và lồng tiếng phụ đề video phim ảnh, hoạt hình, đời sống, vlog từ {lang_name} sang Tiếng Việt.
 
 NHIỆM VỤ TỐI THƯỢNG:
-Dịch toàn bộ danh sách câu thoại đầu vào sang Tiếng Việt CÔ ĐỌNG, SÚC TÍCH, THOÁT NGHĨA TỰ NHIÊN, VỪA KHÍT THỜI LƯỢNG NÓI VÀ ĐÚNG HÀNH ĐỘNG THỰC TẾ TRONG VIDEO.
+Dịch toàn bộ danh sách câu thoại đầu vào sang Tiếng Việt CÔ ĐỌNG, SÚC TÍCH, THOÁT NGHĨA TỰ NHIÊN, VỪA KHÍT THỜI LƯỢNG NÓI VÀ CHUẨN XÁC 100% THEO MẠCH CỐT TRUYỆN TOÀN BÀI.
 
 CÁC NGUYÊN TẮC BẮT BUỘC KHÔNG ĐƯỢC VI PHẠM:
 1. BẢO TOÀN 100% SỐ LƯỢNG ENTRY/INDEX:
    - Số lượng câu đầu ra PHẢI BẰNG CHÍNH XÁC số lượng câu đầu vào (Input count = Output count).
    - Tuyệt đối không được bỏ sót, xóa bỏ, gộp hay chia nhỏ bất kỳ index nào.
    - Các câu ngắn, tiếng cảm thán: "Ừ", "À", "Hả?", "Này!", "Ồ", "Ừm", "..." VẪN PHẢI GIỮ VÀ DỊCH.
-2. DỊCH THOÁT NGHĨA THEO HÀNH ĐỘNG THỰC TẾ & TÊN NHÂN VẬT:
-   - Tên nhân vật hoạt hình: 'Doro' (bé Doro), STT nghe nhầm thành '剁肉' / '小剁肉' ➔ Bắt buộc dịch là 'Doro' hoặc 'bé Doro'.
-   - Cụm từ thành ngữ / khẩu ngữ '安家' (An gia):
-     * Khi video nói về xúc đất, chậu cây, trồng hoa/cây cảnh ➔ '安家' mang nghĩa ẩn dụ trồng vào chậu mới. BẮT BUỘC DỊCH THOÁT NGHĨA LÀ 'sang chậu', 'trồng chậu mới', 'trồng cây' (Tuyệt đối KHÔNG dịch thô cứng/máy móc từng chữ thành 'làm nhà', 'xây nhà').
-     * Ví dụ: "今天我们一起给小剁肉安家吧" ➔ "Hôm nay cùng sang chậu cho bé Doro nhé" (hoặc "Hôm nay cùng trồng chậu mới cho bé Doro nhé").
-   - Các từ đồng âm:
+2. PHÂN TÍCH MẠCH CÂU CHUYỆN LIÊN HOÀN (HOLISTIC STORYLINE CONTEXT):
+   - Nhận diện giọng nói STT tiếng Trung có thể nghe nhầm các từ đồng âm theo chủ đề đời sống/làm vườn/thú cưng:
+     * Video trồng cây, xúc đất vào chậu: '多肉' / '小多肉' (cây sen đá / bé sen đá mọng nước) hay bị STT nghe nhầm thành '剁肉' / '小剁肉'.
+     * Cụm từ '安家' (An gia): Nghĩa ẩn dụ là 'sang chậu / trồng chậu mới' cho cây/hoa (Tuyệt đối KHÔNG dịch máy móc thành 'làm nhà / xây nhà').
+     * '娇嫩': Cây non nớt, mỏng manh, mềm mại, dễ dập.
+     * '一点哦' / '小心点': Nhẹ tay thôi nhé / Cẩn thận nhé.
      * '躲雨' (trú mưa/trốn mưa) ➔ STT nghe nhầm thành '夺鱼' (bắt cá).
      * '猫咪' / '小猫' (mèo) ➔ STT nghe nhầm thành '毛衣' (áo len).
-   - AI PHẢI PHÂN TÍCH TOÀN BỘ MẠCH CÂU CHUYỆN LIÊN KẾT GIỮA CÁC CÂU để dịch tự nhiên, mượt mà và chuẩn ngữ cảnh nhất.
+   - AI PHẢI LIÊN KẾT TẤT CẢ CÁC CÂU TRONG BATCH ĐỂ CHO RA BẢN DỊCH HỢP LOGIC, TỰ NHIÊN NHẤT (ví dụ: "Hôm nay cùng sang chậu cho bé sen đá nhé", "Sen đá nè", "Nhẹ tay thôi nhé", "Sen đá non nớt lắm đấy", "Cậu chu đáo thật đấy").
 3. NGUYÊN TẮC CÔ ĐỌNG VỪA KHÍT THỜI GIAN LỒNG TIẾNG (DUBBING PACING):
    - Bản dịch tiếng Việt BẮT BUỘC PHẢI NGẮN GỌN, SÚC TÍCH, DỄ ĐỌC NHANH, KHÔNG VƯỢT QUÁ số từ 'max_vietnamese_words'.
    - Tuyệt đối KHÔNG dịch rườm rà, dài dòng, thêm thắt từ ngữ thừa thãi.
