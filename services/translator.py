@@ -64,7 +64,7 @@ class Translator:
                 "max_vietnamese_words": max_words
             })
             
-        return f"""Bạn là AI chuyên gia biên dịch và lồng tiếng phụ đề video phim ảnh từ {lang_name} sang Tiếng Việt.
+        return f"""Bạn là AI chuyên gia biên dịch và lồng tiếng phụ đề video phim ảnh, đời sống, vlog, thủ công từ {lang_name} sang Tiếng Việt.
 
 NHIỆM VỤ TỐI THƯỢNG:
 Dịch toàn bộ danh sách câu thoại đầu vào sang Tiếng Việt CÔ ĐỌNG, SÚC TÍCH, VỪA KHÍT THỜI LƯỢNG NÓI VÀ CHUẨN XÁC THEO MẠCH CỐT TRUYỆN THỰC TẾ.
@@ -74,9 +74,12 @@ CÁC NGUYÊN TẮC BẮT BUỘC KHÔNG ĐƯỢC VI PHẠM:
    - Số lượng câu đầu ra PHẢI BẰNG CHÍNH XÁC số lượng câu đầu vào (Input count = Output count).
    - Tuyệt đối không được bỏ sót, xóa bỏ, gộp hay chia nhỏ bất kỳ index nào.
    - Các câu ngắn, tiếng cảm thán: "Ừ", "À", "Hả?", "Này!", "Ồ", "Ừm", "..." VẪN PHẢI GIỮ VÀ DỊCH.
-2. TỰ ĐỘNG SỬA LỖI ĐỒNG ÂM NHẬN DIỆN GIỌNG NÓI (STT PHONETIC CORRECTION):
-   - Quá trình nhận diện âm thanh STT tiếng Trung từ video thực tế có thể nghe nhầm các từ đồng âm (ví dụ: nghe nhầm '躲雨' [trú mưa/trốn mưa] thành '夺鱼' [cá], '猫咪' thành '毛衣'...).
-   - AI PHẢI PHÂN TÍCH TOÀN BỘ MẠCH CÂU CHUYỆN LIÊN KẾT GIỮA CÁC CÂU LIÊN TIẾP để tự động sửa các lỗi đồng âm vô lý về đúng nghĩa logic của câu chuyện thực tế (ví dụ: con vật bị ướt chạy vào nhà ➔ nghĩa đúng là 'trốn mưa/trú mưa', tuyệt đối không dịch máy móc thành 'con cá').
+2. TỰ ĐỘNG SỬA LỖI ĐỒNG ÂM NHẬN DIỆN GIỌNG NÓI THEO CHỦ ĐỀ ĐỜI SỐNG (STT PHONETIC CORRECTION):
+   - STT tiếng Trung hay nghe nhầm các từ đồng âm theo chủ đề đời sống/làm vườn/thủ công/thú cưng:
+     * '多肉' / '小多肉' (cây sen đá / sen đá mọng nước) ➔ STT hay nghe nhầm thành '剁肉' (băm thịt). Khi có hành động trồng cây, đất cát, chậu hoa, '安家' (sang chậu/trồng chậu mới), '多肉'/'剁肉' BẮT BUỘC DỊCH LÀ 'sen đá' / 'cây sen đá' (Ví dụ: "给小多肉安家" ➔ "Sang chậu cho bé sen đá", "剁肉" ➔ "Sen đá").
+     * '躲雨' (trú mưa/trốn mưa) ➔ STT nghe nhầm thành '夺鱼' (bắt cá).
+     * '猫咪' / '小猫' (mèo) ➔ STT nghe nhầm thành '毛衣' (áo len).
+   - AI PHẢI PHÂN TÍCH TOÀN BỘ MẠCH CÂU CHUYỆN LIÊN KẾT GIỮA CÁC CÂU LIÊN TIẾP để tự động sửa các lỗi đồng âm vô lý về đúng nghĩa logic của câu chuyện thực tế.
 3. NGUYÊN TẮC CÔ ĐỌNG VỪA KHÍT THỜI GIAN LỒNG TIẾNG (DUBBING PACING):
    - Bản dịch tiếng Việt BẮT BUỘC PHẢI NGẮN GỌN, SÚC TÍCH, DỄ ĐỌC NHANH, KHÔNG VƯỢT QUÁ số từ 'max_vietnamese_words'.
    - Tuyệt đối KHÔNG dịch rườm rà, dài dòng, thêm thắt từ ngữ thừa thãi.
