@@ -46,7 +46,7 @@ class Transcriber:
                     device=WHISPER_DEVICE,
                     compute_type=WHISPER_COMPUTE_TYPE,
                     cpu_threads=min(4, os.cpu_count() or 4),
-                    num_workers=2
+                    num_workers=1
                 )
                 print(f"[Transcriber] Model '{model_size}' đã sẵn sàng trên {WHISPER_DEVICE}!")
             except Exception as e:
@@ -140,9 +140,8 @@ class Transcriber:
                 audio_path,
                 beam_size=5,
                 language=lang,
-                condition_on_previous_text=True,
-                vad_filter=True,
-                vad_parameters=dict(min_silence_duration_ms=400, speech_pad_ms=150),
+                condition_on_previous_text=False,
+                vad_filter=False,
                 word_timestamps=True,
                 no_speech_threshold=0.6
             )
@@ -164,8 +163,9 @@ class Transcriber:
                     audio_path,
                     beam_size=5,
                     language=lang,
-                    condition_on_previous_text=True,
+                    condition_on_previous_text=False,
                     vad_filter=False,
+                    word_timestamps=True,
                     no_speech_threshold=0.6
                 )
                 segments_list = list(segments_gen)

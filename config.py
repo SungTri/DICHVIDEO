@@ -59,7 +59,7 @@ try:
 
     if ctranslate2.get_cuda_device_count() > 0 and has_cuda_dlls:
         WHISPER_DEVICE = "cuda"
-        WHISPER_COMPUTE_TYPE = "float16"
+        WHISPER_COMPUTE_TYPE = "int8_float16"
         print("⚡ [Config] Phát hiện GPU NVIDIA (CUDA): Đang chạy Whisper trên GPU!")
     else:
         WHISPER_DEVICE = "cpu"
