@@ -404,7 +404,8 @@ async def process_pipeline_finish(job_id: str, segments: list, voice: str, sub_s
                                  separate_vocals: bool = False, output_folder: str | None = None,
                                  custom_output_dir: str | None = None, blur_bars: list[dict] | None = None,
                                  logo_settings: dict | None = None,
-                                 voice_speed: float = 1.0):
+                                 voice_speed: float = 1.0,
+                                 burn_subtitles: bool = True):
     """Giai đoạn 2: Tạo lồng tiếng từ bản dịch đã sửa, xuất video theo style cấu hình."""
     loop = asyncio.get_event_loop()
     job = jobs[job_id]
@@ -490,7 +491,8 @@ async def process_pipeline_finish(job_id: str, segments: list, voice: str, sub_s
             separate_vocals=separate_vocals,
             progress_callback=vp_callback,
             blur_bars=blur_bars,
-            logo_settings=logo_settings
+            logo_settings=logo_settings,
+            burn_subtitles=(burn_subtitles and bool(sub_style.get("burn_subtitles", True)))
         )
 
         await update_step(job_id, 4, "completed", 100, "Hoàn thành!")
@@ -546,6 +548,7 @@ class FinishRequest(BaseModel):
     custom_output_dir: str | None = None
     blur_bars: list[dict] | None = None
     logo_settings: dict | None = None
+    burn_subtitles: bool = True
 
 
 class SrtToAudioRequest(BaseModel):
@@ -625,7 +628,8 @@ async def finish_processing(request: FinishRequest):
             custom_output_dir=request.custom_output_dir,
             blur_bars=request.blur_bars,
             logo_settings=request.logo_settings,
-            voice_speed=request.voice_speed
+            voice_speed=request.voice_speed,
+            burn_subtitles=request.burn_subtitles
         )
     )
 
@@ -1283,6 +1287,110 @@ app.mount("/temp", StaticFiles(directory=TEMP_DIR), name="temp")
 static_dir = os.path.join(BASE_DIR, "static")
 os.makedirs(static_dir, exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+
+class QuickBlurExportRequest(BaseModel):
+    job_id: str | None = None
+    video_path: str | None = None
+    blur_bars: list[dict] = []
+    logo_settings: dict | None = None
+    output_folder: str | None = None
+    custom_output_dir: str | None = None
+
+
+@app.post("/api/quick-blur/upload")
+async def quick_blur_upload(file: UploadFile = File(...)):
+    """Upload video phục vụ công cụ che mờ siêu tốc."""
+    job_id = f"qb_{uuid.uuid4().hex[:8]}"
+    upload_dir = os.path.join(DOWNLOADS_DIR, job_id)
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    filename = file.filename or "video.mp4"
+    clean_name = "".join(c for c in filename if c.isalnum() or c in " ._-").strip() or "video.mp4"
+    video_path = os.path.join(upload_dir, clean_name)
+    
+    with open(video_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    duration = 0
+    try:
+        duration = video_processor.get_video_duration(video_path)
+    except Exception:
+        pass
+        
+    video_url = f"/downloads/{job_id}/{clean_name}"
+    return {
+        "job_id": job_id,
+        "filename": clean_name,
+        "video_url": video_url,
+        "video_path": video_path,
+        "duration": duration
+    }
+
+
+@app.post("/api/quick-blur/export")
+async def quick_blur_export(request: QuickBlurExportRequest):
+    """Xuất video che mờ siêu tốc bằng GPU/CPU không cần qua AI."""
+    video_path = request.video_path
+    if not video_path and request.job_id:
+        upload_dir = os.path.join(DOWNLOADS_DIR, request.job_id)
+        if os.path.exists(upload_dir):
+            files = [f for f in os.listdir(upload_dir) if f.endswith(('.mp4', '.mkv', '.mov', '.avi', '.webm', '.flv'))]
+            if files:
+                video_path = os.path.join(upload_dir, files[0])
+                
+    if not video_path or not os.path.exists(video_path):
+        return JSONResponse(status_code=404, content={"error": "Không tìm thấy file video nguồn"})
+        
+    job_id = request.job_id or f"qb_{uuid.uuid4().hex[:8]}"
+    output_filename = f"{job_id}_blurred.mp4"
+    
+    target_dir = OUTPUTS_DIR
+    if request.output_folder == "custom" and request.custom_output_dir:
+        target_dir = request.custom_output_dir
+    elif request.output_folder and request.output_folder != "default":
+        target_dir = os.path.join(OUTPUTS_DIR, request.output_folder)
+        
+    os.makedirs(target_dir, exist_ok=True)
+    output_path = os.path.join(target_dir, output_filename)
+    
+    try:
+        await asyncio.to_thread(
+            video_processor.apply_quick_blur,
+            video_path,
+            output_path,
+            blur_bars=request.blur_bars,
+            logo_settings=request.logo_settings
+        )
+        
+        orig_name = os.path.basename(video_path)
+        base_title = os.path.splitext(orig_name)[0]
+        jobs[job_id] = {
+            "job_id": job_id,
+            "status": "completed",
+            "overall_progress": 100,
+            "message": "🎉 Video đã che mờ thành công!",
+            "output_path": output_path,
+            "video_info": {
+                "title": f"[Che mờ] {base_title}",
+                "video_path": video_path,
+                "duration": video_processor.get_video_duration(video_path) if os.path.exists(video_path) else 0
+            },
+            "created_at": time.time(),
+            "download_url": f"/api/download/{job_id}"
+        }
+        save_history(jobs)
+        
+        return {
+            "status": "completed",
+            "job_id": job_id,
+            "output_path": output_path,
+            "download_url": f"/api/download/{job_id}",
+            "filename": output_filename
+        }
+    except Exception as e:
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": f"Lỗi xuất video che mờ: {str(e)}"})
 
 
 @app.get("/")

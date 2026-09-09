@@ -52,6 +52,10 @@
                     <span class="nav-icon">📢</span>
                     <span>SRT sang Audio</span>
                 </a>
+                <a href="#" class="nav-item" data-tab="quick-blur">
+                    <span class="nav-icon">🌫️</span>
+                    <span>Che Mờ Video</span>
+                </a>
                 <a href="#" class="nav-item" data-tab="settings">
                     <span class="nav-icon">⚙️</span>
                     <span>Cài đặt</span>
@@ -517,7 +521,21 @@
                         <div class="style-section-card">
                             <div class="style-section-title">
                                 <span class="style-icon-text">T</span>
-                                <h3>CHỮ</h3>
+                                <h3>CHỮ & PHỤ ĐỀ</h3>
+                            </div>
+
+                            <!-- Burn-in Subtitles Toggle -->
+                            <div class="toggle-control-row" style="margin-bottom: 12px; background: rgba(255,255,255,0.03); padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
+                                <div class="toggle-info">
+                                    <div class="toggle-title-main" style="display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                                        <span>💬 In phụ đề lên video</span>
+                                    </div>
+                                    <div class="toggle-desc-sub" style="font-size: 11px; color: var(--text-muted);">Tắt nếu chỉ muốn che thanh mờ và dùng file SRT riêng trên CapCut.</div>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="wsBurnSubtitles" checked>
+                                    <span class="slider round"></span>
+                                </label>
                             </div>
 
                             <div class="stylist-group">
@@ -901,6 +919,97 @@ Nội dung cần lồng tiếng..."></textarea>
                     </div>
                 </div>
             </div>
+
+
+            <!-- TAB 9: QUICK BLUR VIDEO -->
+            <div id="quickBlurTab" class="tab-content hidden">
+                <div class="workspace-header-bar">
+                    <div class="workspace-header-info">
+                        <h2>🌫️ Che Mờ Video Siêu Tốc (Quick Blur)</h2>
+                        <p class="editor-video-meta">Tải video lên &rarr; đặt thanh làm mờ để che sub/logo gốc &rarr; xuất video ngay bằng GPU trong vài giây (không cần qua AI dịch thuật).</p>
+                    </div>
+                    <div class="workspace-header-actions">
+                        <button id="quickBlurExportBtn" class="btn-process-purple" style="display: flex; align-items: center; gap: 8px;">
+                            <span>⚡ Xuất Video Che Mờ Ngay</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="workspace-layout">
+                    <!-- Left Column: Video Dropzone & Live Video Player with Blur Bar overlays -->
+                    <div class="workspace-left">
+                        <div id="qbDropZone" class="upload-dropzone" style="border: 2px dashed var(--border); border-radius: var(--radius); padding: 40px 20px; text-align: center; background: rgba(255,255,255,0.02); cursor: pointer; transition: all 0.2s; margin-bottom: 20px;">
+                            <input type="file" id="qbFileInput" accept="video/*" style="display: none;">
+                            <div style="font-size: 40px; margin-bottom: 10px;">📁</div>
+                            <h3 style="margin-bottom: 6px;">Kéo &amp; thả video vào đây hoặc nhấn để chọn file</h3>
+                            <p style="color: var(--text-muted); font-size: 13px;">Hỗ trợ MP4, MKV, MOV, AVI, WEBM dung lượng bất kỳ</p>
+                        </div>
+
+                        <div id="qbPlayerContainer" class="workspace-video-card" style="display: none; position: relative;">
+                            <div class="video-container" id="qbVideoContainer" style="position: relative; background: #000; border-radius: var(--radius); overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 320px;">
+                                <video id="qbVideo" controls style="max-width: 100%; max-height: 520px; display: block;"></video>
+                                <div id="qbBlurOverlayContainer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 13px; color: var(--text-muted);">
+                                <span id="qbVideoMeta">Thời lượng: 0s</span>
+                                <button id="qbChangeVideoBtn" style="background: none; border: none; color: var(--primary); cursor: pointer; text-decoration: underline;">Đổi video khác</button>
+                            </div>
+                        </div>
+
+                        <!-- Export Progress & Result -->
+                        <div id="qbProgressCard" class="card" style="display: none; margin-top: 20px; padding: 20px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: var(--radius);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                                <span id="qbProgressIcon" style="font-size: 20px;">⏳</span>
+                                <h4 id="qbProgressTitle" style="margin: 0;">Đang kết xuất video che mờ...</h4>
+                            </div>
+                            <div class="progress-bar-container" style="background: rgba(255,255,255,0.1); border-radius: 99px; height: 8px; overflow: hidden; margin-bottom: 15px;">
+                                <div id="qbProgressBar" style="width: 0%; height: 100%; background: var(--primary); transition: width 0.3s;"></div>
+                            </div>
+                            <div id="qbResultContainer" style="display: none; text-align: center; margin-top: 15px;">
+                                <div style="color: #10b981; font-weight: 600; margin-bottom: 12px;">🎉 Xuất video che mờ thành công!</div>
+                                <a id="qbDownloadBtn" href="#" class="btn-download" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; text-decoration: none;">
+                                    <span>⬇️ Tải Video Hoàn Tất</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Blur Bars Controls -->
+                    <div class="workspace-right">
+                        <div class="style-section-card">
+                            <div class="style-section-title" style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="style-icon-text">🌫️</span>
+                                    <h3 style="margin: 0;">THANH LÀM MỜ (BLUR BARS)</h3>
+                                </div>
+                                <button id="qbAddBlurBarBtn" style="background: rgba(255,255,255,0.1); border: 1px solid var(--border); border-radius: var(--radius-sm); color: #fff; padding: 4px 12px; cursor: pointer;">+ Thêm thanh mờ</button>
+                            </div>
+                            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">
+                                Kéo thả thanh mờ trực tiếp trên video hoặc điều chỉnh các thanh trượt bên dưới.
+                            </p>
+                            <div id="qbBlurBarsList"></div>
+                        </div>
+
+                        <!-- Output Folder Setting -->
+                        <div class="style-section-card" style="margin-top: 15px;">
+                            <div class="style-section-title">
+                                <span class="style-icon-text">📂</span>
+                                <h3>THƯ MỤC XUẤT</h3>
+                            </div>
+                            <div class="stylist-group">
+                                <select id="qbOutputFolderSelect" style="width: 100%;">
+                                    <option value="default">Mặc định (outputs/)</option>
+                                    <option value="custom">Thư mục tùy chỉnh trên máy...</option>
+                                </select>
+                            </div>
+                            <div id="qbCustomOutputDirContainer" class="stylist-group" style="display: none; margin-top: 8px;">
+                                <input type="text" id="qbCustomOutputDir" placeholder="Ví dụ: D:\Video_Che_Mo" style="width: 100%;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
 
             <!-- TAB 4: FINAL SUCCESS RESULT -->
             <div id="resultTab" class="tab-content hidden">

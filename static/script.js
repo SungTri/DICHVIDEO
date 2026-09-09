@@ -15,6 +15,8 @@ const elements = {
     resultTab: document.getElementById('resultTab'),
     errorTab: document.getElementById('errorTab'),
     historyTab: document.getElementById('historyTab'),
+    quickBlurTab: document.getElementById('quickBlurTab'),
+    wsBurnSubtitles: document.getElementById('wsBurnSubtitles'),
 
     srtTab: document.getElementById('srtTab'),
     settingsTab: document.getElementById('settingsTab'),
@@ -173,7 +175,7 @@ function isValidUrl(string) {
 // ============================================================
 
 function showTab(tabId) {
-    const tabs = ['homeTab', 'progressTab', 'workspaceTab', 'resultTab', 'errorTab', 'historyTab', 'srtTab', 'settingsTab'];
+    const tabs = ['homeTab', 'progressTab', 'workspaceTab', 'resultTab', 'errorTab', 'historyTab', 'srtTab', 'settingsTab', 'quickBlurTab'];
     
     tabs.forEach(id => {
         const el = elements[id];
@@ -217,6 +219,13 @@ function showTab(tabId) {
         elements.pageTitle.textContent = 'Cài đặt';
         const settingsNav = document.querySelector('.nav-item[data-tab="settings"]');
         if (settingsNav) settingsNav.classList.add('active');
+    } else if (tabId === 'quickBlurTab') {
+        elements.pageTitle.textContent = 'Che Mờ Video';
+        const qbNav = document.querySelector('.nav-item[data-tab="quick-blur"]');
+        if (qbNav) qbNav.classList.add('active');
+        if (typeof initQuickBlurTab === 'function') {
+            initQuickBlurTab();
+        }
     }
 }
 
@@ -1835,6 +1844,8 @@ document.querySelectorAll('.nav-item').forEach(item => {
             loadHistoryList();
         } else if (tab === 'srt') {
             showTab('srtTab');
+        } else if (tab === 'quick-blur') {
+            showTab('quickBlurTab');
         } else if (tab === 'settings') {
             showTab('settingsTab');
             loadSettingsData();
@@ -1948,6 +1959,7 @@ if (elements.exportBtn) {
         // Dừng video player
         elements.workspaceVideo.pause();
 
+        const isBurnSub = elements.wsBurnSubtitles ? elements.wsBurnSubtitles.checked : true;
         const subStyle = {
             color: elements.subColor.value,
             size: parseInt(elements.subSize.value),
@@ -1959,7 +1971,8 @@ if (elements.exportBtn) {
             outline: elements.subOutline ? elements.subOutline.checked : true,
             outline_width: elements.subOutlineWidth ? parseFloat(elements.subOutlineWidth.value) : 4.0,
             shadow: elements.subShadow ? elements.subShadow.checked : false,
-            margin_v_percent: configs.sub_margin_v_percent !== undefined ? configs.sub_margin_v_percent : 5
+            margin_v_percent: configs.sub_margin_v_percent !== undefined ? configs.sub_margin_v_percent : 5,
+            burn_subtitles: isBurnSub
         };
 
         try {
@@ -1972,6 +1985,7 @@ if (elements.exportBtn) {
                     voice: elements.workspaceVoiceSelect ? elements.workspaceVoiceSelect.value : configs.voice,
                     voice_speed: elements.workspaceVoiceSpeedSelect ? parseFloat(elements.workspaceVoiceSpeedSelect.value) : configs.voice_speed,
                     sub_style: subStyle,
+                    burn_subtitles: isBurnSub,
                     original_volume: elements.wsOriginalVolume ? parseFloat(elements.wsOriginalVolume.value) : 0.15,
                     dubbed_volume: elements.wsDubbedVolume ? parseFloat(elements.wsDubbedVolume.value) : 1.0,
                     separate_vocals: document.getElementById('wsSeparateVocals') ? document.getElementById('wsSeparateVocals').checked : false,
@@ -3715,4 +3729,531 @@ function addGeminiKeyInput(val = '') {
     div.appendChild(removeBtn);
     
     container.appendChild(div);
+}
+
+
+// ============================================================
+// QUICK BLUR VIDEO FEATURE (CHE MỜ VIDEO SIÊU TỐC)
+// ============================================================
+
+window.qbBlurBars = [
+    { enabled: true, x_percent: 0, y_percent: 85, w_percent: 100, h_percent: 15, intensity: 15 }
+];
+let qbCurrentJobId = null;
+let qbCurrentVideoPath = null;
+let qbIsInitialized = false;
+
+function initQuickBlurTab() {
+    if (qbIsInitialized) return;
+    qbIsInitialized = true;
+
+    const qbDropZone = document.getElementById('qbDropZone');
+    const qbFileInput = document.getElementById('qbFileInput');
+    const qbVideo = document.getElementById('qbVideo');
+    const qbChangeVideoBtn = document.getElementById('qbChangeVideoBtn');
+    const qbAddBlurBarBtn = document.getElementById('qbAddBlurBarBtn');
+    const quickBlurExportBtn = document.getElementById('quickBlurExportBtn');
+    const qbOutputFolderSelect = document.getElementById('qbOutputFolderSelect');
+    const qbCustomOutputDirContainer = document.getElementById('qbCustomOutputDirContainer');
+
+    // Folder select
+    if (qbOutputFolderSelect) {
+        qbOutputFolderSelect.addEventListener('change', () => {
+            if (qbCustomOutputDirContainer) {
+                qbCustomOutputDirContainer.style.display = qbOutputFolderSelect.value === 'custom' ? 'block' : 'none';
+            }
+        });
+    }
+
+    // Dropzone events
+    if (qbDropZone && qbFileInput) {
+        qbDropZone.addEventListener('click', () => qbFileInput.click());
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            qbDropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                qbDropZone.style.borderColor = 'var(--primary)';
+                qbDropZone.style.background = 'rgba(139, 92, 246, 0.08)';
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            qbDropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                qbDropZone.style.borderColor = 'var(--border)';
+                qbDropZone.style.background = 'rgba(255, 255, 255, 0.02)';
+            });
+        });
+
+        qbDropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files.length > 0) {
+                handleQuickBlurUpload(files[0]);
+            }
+        });
+
+        qbFileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                handleQuickBlurUpload(e.target.files[0]);
+            }
+        });
+    }
+
+    if (qbChangeVideoBtn && qbFileInput) {
+        qbChangeVideoBtn.addEventListener('click', () => qbFileInput.click());
+    }
+
+    if (qbAddBlurBarBtn) {
+        qbAddBlurBarBtn.addEventListener('click', () => {
+            window.qbBlurBars.push({
+                enabled: true,
+                x_percent: 0,
+                y_percent: 85,
+                w_percent: 100,
+                h_percent: 15,
+                intensity: 15
+            });
+            renderQuickBlurBarsUI();
+            updateQuickBlurDisplay();
+        });
+    }
+
+    if (quickBlurExportBtn) {
+        quickBlurExportBtn.addEventListener('click', handleQuickBlurExport);
+    }
+
+    if (qbVideo) {
+        qbVideo.addEventListener('loadedmetadata', updateQuickBlurDisplay);
+    }
+    window.addEventListener('resize', updateQuickBlurDisplay);
+
+    setupQuickBlurDrag();
+    renderQuickBlurBarsUI();
+}
+
+async function handleQuickBlurUpload(file) {
+    const qbDropZone = document.getElementById('qbDropZone');
+    const qbPlayerContainer = document.getElementById('qbPlayerContainer');
+    const qbVideo = document.getElementById('qbVideo');
+    const qbVideoMeta = document.getElementById('qbVideoMeta');
+    const qbProgressCard = document.getElementById('qbProgressCard');
+    const qbResultContainer = document.getElementById('qbResultContainer');
+
+    if (!file) return;
+
+    if (qbProgressCard) qbProgressCard.style.display = 'none';
+    if (qbResultContainer) qbResultContainer.style.display = 'none';
+
+    // Show temporary status
+    if (qbDropZone) {
+        qbDropZone.innerHTML = `<div style="font-size:32px; margin-bottom:10px;">⏳</div><h3>Đang tải lên ${file.name}...</h3>`;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await fetch('/api/quick-blur/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || err.error || 'Lỗi tải video');
+        }
+
+        const data = await response.json();
+        qbCurrentJobId = data.job_id;
+        qbCurrentVideoPath = data.video_path;
+
+        if (qbDropZone) qbDropZone.style.display = 'none';
+        if (qbPlayerContainer) qbPlayerContainer.style.display = 'block';
+
+        if (qbVideo) {
+            qbVideo.src = data.video_url;
+            qbVideo.load();
+        }
+
+        if (qbVideoMeta) {
+            const dur = data.duration ? Math.round(data.duration) + 's' : 'Đang đo';
+            qbVideoMeta.textContent = `📁 ${data.filename} (${dur})`;
+        }
+
+        renderQuickBlurBarsUI();
+        setTimeout(updateQuickBlurDisplay, 300);
+
+    } catch (e) {
+        alert(`Lỗi upload: ${e.message}`);
+        if (qbDropZone) {
+            qbDropZone.innerHTML = `
+                <input type="file" id="qbFileInput" accept="video/*" style="display: none;">
+                <div style="font-size: 40px; margin-bottom: 10px;">📁</div>
+                <h3 style="margin-bottom: 6px;">Kéo &amp; thả video vào đây hoặc nhấn để chọn file</h3>
+                <p style="color: var(--text-muted); font-size: 13px;">Hỗ trợ MP4, MKV, MOV, AVI, WEBM dung lượng bất kỳ</p>
+            `;
+            initQuickBlurTab();
+        }
+    }
+}
+
+function getQbVideoActiveArea() {
+    const qbVideo = document.getElementById('qbVideo');
+    if (!qbVideo || !qbVideo.parentElement) return { x: 0, y: 0, w: 0, h: 0 };
+    const container = qbVideo.parentElement;
+
+    if (!qbVideo.videoWidth) {
+        return { x: 0, y: 0, w: container.clientWidth, h: container.clientHeight };
+    }
+
+    const videoRatio = qbVideo.videoWidth / qbVideo.videoHeight;
+    const containerRatio = container.clientWidth / container.clientHeight;
+    let actualWidth, actualHeight, xOffset, yOffset;
+
+    if (videoRatio > containerRatio) {
+        actualWidth = container.clientWidth;
+        actualHeight = actualWidth / videoRatio;
+        xOffset = 0;
+        yOffset = (container.clientHeight - actualHeight) / 2;
+    } else {
+        actualHeight = container.clientHeight;
+        actualWidth = actualHeight * videoRatio;
+        yOffset = 0;
+        xOffset = (container.clientWidth - actualWidth) / 2;
+    }
+    return { x: xOffset, y: yOffset, w: actualWidth, h: actualHeight };
+}
+
+function updateQuickBlurDisplay() {
+    const container = document.getElementById('qbBlurOverlayContainer');
+    if (!container) return;
+
+    const area = getQbVideoActiveArea();
+    if (!area || area.w === 0 || area.h === 0) return;
+
+    container.innerHTML = '';
+    window.qbBlurBars.forEach((bar, index) => {
+        if (!bar.enabled) return;
+
+        const yPct = bar.y_percent !== undefined ? bar.y_percent : 85;
+        const xPct = bar.x_percent !== undefined ? bar.x_percent : 0;
+        const wPct = bar.w_percent !== undefined ? bar.w_percent : 100;
+        const hPct = bar.h_percent !== undefined ? bar.h_percent : 15;
+        const intensity = bar.intensity !== undefined ? bar.intensity : 15;
+
+        const topPx = area.y + (yPct / 100) * area.h;
+        const leftPx = area.x + (xPct / 100) * area.w;
+        const widthPx = (wPct / 100) * area.w;
+        const heightPx = (hPct / 100) * area.h;
+
+        const blurDiv = document.createElement('div');
+        blurDiv.className = 'qb-blur-bar-overlay';
+        blurDiv.setAttribute('data-index', index);
+        blurDiv.style.position = 'absolute';
+        blurDiv.style.top = topPx + 'px';
+        blurDiv.style.left = leftPx + 'px';
+        blurDiv.style.width = widthPx + 'px';
+        blurDiv.style.height = heightPx + 'px';
+        blurDiv.style.backdropFilter = `blur(${intensity}px)`;
+        blurDiv.style.webkitBackdropFilter = `blur(${intensity}px)`;
+        blurDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.25)';
+        blurDiv.style.border = '1px dashed rgba(255, 255, 255, 0.6)';
+        blurDiv.style.borderRadius = '4px';
+        blurDiv.style.pointerEvents = 'auto';
+        blurDiv.style.cursor = 'move';
+        blurDiv.style.zIndex = '50';
+        blurDiv.style.display = 'flex';
+        blurDiv.style.alignItems = 'center';
+        blurDiv.style.justifyContent = 'center';
+        blurDiv.style.color = 'rgba(255,255,255,0.9)';
+        blurDiv.style.fontSize = '11px';
+        blurDiv.style.fontWeight = 'bold';
+        blurDiv.style.userSelect = 'none';
+        blurDiv.innerHTML = `<span style="background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 3px;">Thanh mờ #${index + 1}</span>`;
+
+        container.appendChild(blurDiv);
+    });
+}
+
+function renderQuickBlurBarsUI() {
+    const list = document.getElementById('qbBlurBarsList');
+    if (!list) return;
+
+    list.innerHTML = '';
+    window.qbBlurBars.forEach((bar, index) => {
+        const yPct = bar.y_percent !== undefined ? bar.y_percent : 85;
+        const xPct = bar.x_percent !== undefined ? bar.x_percent : 0;
+        const wPct = bar.w_percent !== undefined ? bar.w_percent : 100;
+        const hPct = bar.h_percent !== undefined ? bar.h_percent : 15;
+        const intensity = bar.intensity !== undefined ? bar.intensity : 15;
+        const enabled = bar.enabled !== undefined ? bar.enabled : true;
+
+        const card = document.createElement('div');
+        card.className = 'blur-bar-settings-card';
+        card.style.background = 'rgba(255,255,255,0.03)';
+        card.style.border = '1px solid var(--border)';
+        card.style.padding = '12px';
+        card.style.marginBottom = '10px';
+        card.style.borderRadius = 'var(--radius-sm)';
+
+        card.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <label style="font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" class="qb-blur-bar-enable" data-index="${index}" ${enabled ? 'checked' : ''}>
+                    <span>Thanh mờ #${index + 1}</span>
+                </label>
+                <button class="qb-remove-blur-bar-btn" data-index="${index}" style="background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 12px;">Xóa</button>
+            </div>
+            
+            <div class="stylist-group" style="margin-bottom: 6px;">
+                <div class="label-with-value">
+                    <label style="font-size: 11px;">VỊ TRÍ DỌC (Y)</label>
+                    <span id="qbBlurBarYVal_${index}" style="font-size: 11px;">${Math.round(yPct)}%</span>
+                </div>
+                <input type="range" class="custom-slider qb-blur-bar-y-slider" data-index="${index}" min="0" max="100" value="${yPct}">
+            </div>
+
+            <div class="stylist-group" style="margin-bottom: 6px;">
+                <div class="label-with-value">
+                    <label style="font-size: 11px;">VỊ TRÍ NGANG (X)</label>
+                    <span id="qbBlurBarXVal_${index}" style="font-size: 11px;">${Math.round(xPct)}%</span>
+                </div>
+                <input type="range" class="custom-slider qb-blur-bar-x-slider" data-index="${index}" min="0" max="100" value="${xPct}">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px;">
+                <div class="stylist-group">
+                    <div class="label-with-value">
+                        <label style="font-size: 11px;">CHIỀU CAO (H)</label>
+                        <span id="qbBlurBarHVal_${index}" style="font-size: 11px;">${Math.round(hPct)}%</span>
+                    </div>
+                    <input type="range" class="custom-slider qb-blur-bar-h-slider" data-index="${index}" min="1" max="100" value="${hPct}">
+                </div>
+                <div class="stylist-group">
+                    <div class="label-with-value">
+                        <label style="font-size: 11px;">CHIỀU RỘNG (W)</label>
+                        <span id="qbBlurBarWVal_${index}" style="font-size: 11px;">${Math.round(wPct)}%</span>
+                    </div>
+                    <input type="range" class="custom-slider qb-blur-bar-w-slider" data-index="${index}" min="1" max="100" value="${wPct}">
+                </div>
+            </div>
+
+            <div class="stylist-group">
+                <div class="label-with-value">
+                    <label style="font-size: 11px;">ĐỘ MỜ (INTENSITY)</label>
+                    <span id="qbBlurBarIntensityVal_${index}" style="font-size: 11px;">${intensity}px</span>
+                </div>
+                <input type="range" class="custom-slider qb-blur-bar-intensity-slider" data-index="${index}" min="1" max="30" value="${intensity}">
+            </div>
+        `;
+
+        list.appendChild(card);
+    });
+
+    // Wire listeners
+    list.querySelectorAll('.qb-remove-blur-bar-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const idx = parseInt(e.target.getAttribute('data-index'));
+            window.qbBlurBars.splice(idx, 1);
+            renderQuickBlurBarsUI();
+            updateQuickBlurDisplay();
+        });
+    });
+
+    list.querySelectorAll('.qb-blur-bar-enable').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+            const idx = parseInt(e.target.getAttribute('data-index'));
+            window.qbBlurBars[idx].enabled = e.target.checked;
+            updateQuickBlurDisplay();
+        });
+    });
+
+    list.querySelectorAll('.qb-blur-bar-y-slider').forEach(slider => {
+        slider.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.getAttribute('data-index'));
+            const val = parseFloat(e.target.value);
+            window.qbBlurBars[idx].y_percent = val;
+            const label = document.getElementById(`qbBlurBarYVal_${idx}`);
+            if (label) label.textContent = Math.round(val) + '%';
+            updateQuickBlurDisplay();
+        });
+    });
+
+    list.querySelectorAll('.qb-blur-bar-x-slider').forEach(slider => {
+        slider.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.getAttribute('data-index'));
+            const val = parseFloat(e.target.value);
+            window.qbBlurBars[idx].x_percent = val;
+            const label = document.getElementById(`qbBlurBarXVal_${idx}`);
+            if (label) label.textContent = Math.round(val) + '%';
+            updateQuickBlurDisplay();
+        });
+    });
+
+    list.querySelectorAll('.qb-blur-bar-h-slider').forEach(slider => {
+        slider.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.getAttribute('data-index'));
+            const val = parseFloat(e.target.value);
+            window.qbBlurBars[idx].h_percent = val;
+            const label = document.getElementById(`qbBlurBarHVal_${idx}`);
+            if (label) label.textContent = Math.round(val) + '%';
+            updateQuickBlurDisplay();
+        });
+    });
+
+    list.querySelectorAll('.qb-blur-bar-w-slider').forEach(slider => {
+        slider.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.getAttribute('data-index'));
+            const val = parseFloat(e.target.value);
+            window.qbBlurBars[idx].w_percent = val;
+            const label = document.getElementById(`qbBlurBarWVal_${idx}`);
+            if (label) label.textContent = Math.round(val) + '%';
+            updateQuickBlurDisplay();
+        });
+    });
+
+    list.querySelectorAll('.qb-blur-bar-intensity-slider').forEach(slider => {
+        slider.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.getAttribute('data-index'));
+            const val = parseInt(e.target.value);
+            window.qbBlurBars[idx].intensity = val;
+            const label = document.getElementById(`qbBlurBarIntensityVal_${idx}`);
+            if (label) label.textContent = val + 'px';
+            updateQuickBlurDisplay();
+        });
+    });
+}
+
+let isDraggingQbBlur = false;
+let draggingQbIndex = -1;
+let qbStartY = 0;
+let qbStartX = 0;
+let qbStartYPercent = 0;
+let qbStartXPercent = 0;
+
+function setupQuickBlurDrag() {
+    const container = document.getElementById('qbBlurOverlayContainer');
+    if (!container) return;
+
+    container.addEventListener('mousedown', (e) => {
+        const target = e.target.closest('.qb-blur-bar-overlay');
+        if (target && target.hasAttribute('data-index')) {
+            isDraggingQbBlur = true;
+            draggingQbIndex = parseInt(target.getAttribute('data-index'));
+            qbStartY = e.clientY;
+            qbStartX = e.clientX;
+            qbStartYPercent = window.qbBlurBars[draggingQbIndex].y_percent !== undefined ? window.qbBlurBars[draggingQbIndex].y_percent : 85;
+            qbStartXPercent = window.qbBlurBars[draggingQbIndex].x_percent !== undefined ? window.qbBlurBars[draggingQbIndex].x_percent : 0;
+            document.body.style.cursor = 'move';
+            e.preventDefault();
+        }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDraggingQbBlur || draggingQbIndex < 0) return;
+        const area = getQbVideoActiveArea();
+        if (!area || area.w === 0 || area.h === 0) return;
+
+        const deltaY = e.clientY - qbStartY;
+        const deltaX = e.clientX - qbStartX;
+        const deltaYPercent = (deltaY / area.h) * 100;
+        const deltaXPercent = (deltaX / area.w) * 100;
+
+        let newY = Math.max(0, Math.min(100, qbStartYPercent + deltaYPercent));
+        let newX = Math.max(0, Math.min(100, qbStartXPercent + deltaXPercent));
+
+        window.qbBlurBars[draggingQbIndex].y_percent = newY;
+        window.qbBlurBars[draggingQbIndex].x_percent = newX;
+
+        const ySlider = document.querySelector(`.qb-blur-bar-y-slider[data-index="${draggingQbIndex}"]`);
+        const yVal = document.getElementById(`qbBlurBarYVal_${draggingQbIndex}`);
+        if (ySlider) ySlider.value = newY;
+        if (yVal) yVal.textContent = Math.round(newY) + '%';
+
+        const xSlider = document.querySelector(`.qb-blur-bar-x-slider[data-index="${draggingQbIndex}"]`);
+        const xVal = document.getElementById(`qbBlurBarXVal_${draggingQbIndex}`);
+        if (xSlider) xSlider.value = newX;
+        if (xVal) xVal.textContent = Math.round(newX) + '%';
+
+        updateQuickBlurDisplay();
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (isDraggingQbBlur) {
+            isDraggingQbBlur = false;
+            draggingQbIndex = -1;
+            document.body.style.cursor = '';
+        }
+    });
+}
+
+async function handleQuickBlurExport() {
+    if (!qbCurrentVideoPath && !qbCurrentJobId) {
+        alert('Vui lòng tải video lên trước khi xuất.');
+        return;
+    }
+
+    const exportBtn = document.getElementById('quickBlurExportBtn');
+    const progressCard = document.getElementById('qbProgressCard');
+    const progressBar = document.getElementById('qbProgressBar');
+    const progressTitle = document.getElementById('qbProgressTitle');
+    const resultContainer = document.getElementById('qbResultContainer');
+    const downloadBtn = document.getElementById('qbDownloadBtn');
+
+    if (exportBtn) exportBtn.disabled = true;
+    if (progressCard) progressCard.style.display = 'block';
+    if (resultContainer) resultContainer.style.display = 'none';
+    if (progressBar) progressBar.style.width = '20%';
+    if (progressTitle) progressTitle.textContent = '⚡ Đang áp dụng thanh làm mờ bằng phần cứng GPU/CPU...';
+
+    // Simulate progress animation
+    let progress = 20;
+    const interval = setInterval(() => {
+        if (progress < 85) {
+            progress += 10;
+            if (progressBar) progressBar.style.width = progress + '%';
+        }
+    }, 400);
+
+    try {
+        const outFolder = document.getElementById('qbOutputFolderSelect') ? document.getElementById('qbOutputFolderSelect').value : 'default';
+        const customDir = document.getElementById('qbCustomOutputDir') ? document.getElementById('qbCustomOutputDir').value.trim() : null;
+
+        const response = await fetch('/api/quick-blur/export', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                job_id: qbCurrentJobId,
+                video_path: qbCurrentVideoPath,
+                blur_bars: window.qbBlurBars,
+                output_folder: outFolder,
+                custom_output_dir: customDir
+            })
+        });
+
+        clearInterval(interval);
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || err.error || 'Lỗi xuất video che mờ');
+        }
+
+        const data = await response.json();
+        if (progressBar) progressBar.style.width = '100%';
+        if (progressTitle) progressTitle.textContent = '🎉 Video đã được che mờ thành công!';
+
+        if (resultContainer) resultContainer.style.display = 'block';
+        if (downloadBtn) {
+            downloadBtn.href = data.download_url;
+            downloadBtn.setAttribute('download', data.filename || 'video_che_mo.mp4');
+        }
+
+    } catch (e) {
+        clearInterval(interval);
+        alert(`Lỗi xuất video: ${e.message}`);
+        if (progressTitle) progressTitle.textContent = `❌ Lỗi: ${e.message}`;
+    } finally {
+        if (exportBtn) exportBtn.disabled = false;
+    }
 }

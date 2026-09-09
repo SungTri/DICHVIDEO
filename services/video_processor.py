@@ -31,31 +31,40 @@ class VideoProcessor:
 
     @staticmethod
     def get_best_video_encoder() -> str:
-        """Kiểm tra và trả về encoder tốt nhất được hỗ trợ (NVENC, QSV hoặc libx264)."""
+        """Kiểm tra và trả về encoder tốt nhất thực tế hoạt động (NVENC, QSV hoặc libx264)."""
         if VideoProcessor._cached_encoder is not None:
             return VideoProcessor._cached_encoder
 
+        # 1. Kiểm tra h264_nvenc
         try:
-            result = subprocess.run(
-                [FFMPEG_PATH, '-encoders'],
+            test_nvenc = subprocess.run(
+                [FFMPEG_PATH, '-f', 'lavfi', '-i', 'nullsrc=s=256x256:d=0.1', '-c:v', 'h264_nvenc', '-f', 'null', '-'],
                 capture_output=True, text=True
             )
-            if result.returncode == 0:
-                encoders_text = result.stdout
-                if "h264_nvenc" in encoders_text:
-                    print("⚡ [VideoProcessor] Phát hiện GPU Nvidia: Dùng phần cứng NVENC (h264_nvenc)!")
-                    VideoProcessor._cached_encoder = "h264_nvenc"
-                    return "h264_nvenc"
-                if "h264_qsv" in encoders_text:
-                    print("⚡ [VideoProcessor] Phát hiện GPU Intel: Dùng phần cứng QSV (h264_qsv)!")
-                    VideoProcessor._cached_encoder = "h264_qsv"
-                    return "h264_qsv"
-        except Exception as e:
-            print(f"[VideoProcessor] Lỗi kiểm tra encoders: {e}")
+            if test_nvenc.returncode == 0:
+                print("⚡ [VideoProcessor] Phát hiện GPU Nvidia: Dùng phần cứng NVENC (h264_nvenc)!")
+                VideoProcessor._cached_encoder = "h264_nvenc"
+                return "h264_nvenc"
+        except Exception:
+            pass
+
+        # 2. Kiểm tra h264_qsv
+        try:
+            test_qsv = subprocess.run(
+                [FFMPEG_PATH, '-f', 'lavfi', '-i', 'nullsrc=s=256x256:d=0.1', '-c:v', 'h264_qsv', '-f', 'null', '-'],
+                capture_output=True, text=True
+            )
+            if test_qsv.returncode == 0:
+                print("⚡ [VideoProcessor] Phát hiện GPU Intel: Dùng phần cứng QSV (h264_qsv)!")
+                VideoProcessor._cached_encoder = "h264_qsv"
+                return "h264_qsv"
+        except Exception:
+            pass
         
-        print("ℹ️ [VideoProcessor] Dùng bộ mã hóa phần mềm CPU: libx264")
+        print("ℹ️ [VideoProcessor] Dùng bộ mã hóa phần mềm CPU: libx264 (ultrafast)")
         VideoProcessor._cached_encoder = "libx264"
         return "libx264"
+
 
     def get_video_duration(self, video_path: str) -> float:
         """
@@ -264,7 +273,8 @@ class VideoProcessor:
                      separate_vocals: bool = False,
                      progress_callback: Callable[[float], None] | None = None,
                      blur_bars: list[dict] | None = None,
-                     logo_settings: dict | None = None) -> str:
+                     logo_settings: dict | None = None,
+                     burn_subtitles: bool = True) -> str:
         """
         Xuất video hoàn chỉnh: chèn phụ đề + trộn audio bằng 1 câu lệnh duy nhất
         với các cấu hình style phụ đề tùy biến và preset encode tối ưu (ultrafast).
@@ -461,6 +471,22 @@ class VideoProcessor:
             v_in = "[vlogo_out]"
             logo_input_args = ['-i', logo_path]
 
+        # Kiểm tra xem video gốc có audio stream hay không
+        has_orig_audio = True
+        try:
+            probe_cmd = [
+                FFPROBE_PATH, '-v', 'error',
+                '-select_streams', 'a:0',
+                '-show_entries', 'stream=codec_type',
+                '-of', 'csv=p=0',
+                video_path
+            ]
+            probe_res = subprocess.run(probe_cmd, capture_output=True, text=True)
+            if not probe_res.stdout.strip():
+                has_orig_audio = False
+        except Exception:
+            has_orig_audio = True
+
         audio_mix_filter = ""
         inputs = ['-i', video_path]
         
@@ -471,35 +497,53 @@ class VideoProcessor:
                 f"[1:a]volume={dub_vol}[dub];"
                 f"[orig][dub]amix=inputs=2:duration=first:dropout_transition=3[aout]"
             )
-        elif dubbed_audio_path:
+        elif dubbed_audio_path and has_orig_audio:
             inputs.extend(['-i', dubbed_audio_path])
             audio_mix_filter = (
                 f"[0:a]volume={orig_vol}[orig];"
                 f"[1:a]volume={dub_vol}[dub];"
                 f"[orig][dub]amix=inputs=2:duration=first:dropout_transition=3[aout]"
             )
+        elif dubbed_audio_path and not has_orig_audio:
+            inputs.extend(['-i', dubbed_audio_path])
+            audio_mix_filter = f"[1:a]volume={dub_vol}[aout]"
         elif no_vocals_path:
             inputs.extend(['-i', no_vocals_path])
             audio_mix_filter = f"[1:a]volume={orig_vol}[aout]"
-        else:
+        elif has_orig_audio:
             audio_mix_filter = f"[0:a]volume={orig_vol}[aout]"
+        else:
+            audio_mix_filter = "" 
             
         inputs.extend(logo_input_args)
 
-        filter_complex = (
-            f"{blur_filter}"
-            f"{logo_filter}"
-            f"{v_in}subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout];"
-            f"{audio_mix_filter}"
-        )
+        # Bộ lọc video xuất: chèn sub hoặc chỉ đưa luồng video qua (null filter)
+        if burn_subtitles and os.path.exists(temp_srt):
+            sub_filter = f"{v_in}subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout]"
+        else:
+            sub_filter = f"{v_in}null[vout]"
+
+        # Ghép các chuỗi filterchain đảm bảo không thừa dấu chấm phẩy
+        filter_chains = []
+        if blur_filter:
+            filter_chains.append(blur_filter.rstrip(';'))
+        if logo_filter:
+            filter_chains.append(logo_filter.rstrip(';'))
+        if sub_filter:
+            filter_chains.append(sub_filter.rstrip(';'))
+        if audio_mix_filter:
+            filter_chains.append(audio_mix_filter.rstrip(';'))
+
+        filter_complex = ";".join(filter_chains)
 
         # Kiểm tra bộ giải mã phần cứng tốt nhất
         encoder = self.get_best_video_encoder()
 
+        audio_map_args = ['-map', '[aout]'] if audio_mix_filter else ['-map', '0:a?']
         cmd = [FFMPEG_PATH] + inputs + [
             '-filter_complex', filter_complex,
             '-map', '[vout]',
-            '-map', '[aout]',
+        ] + audio_map_args + [
             '-c:v', encoder,
         ]
 
@@ -531,7 +575,7 @@ class VideoProcessor:
                 cmd_cpu = [FFMPEG_PATH] + inputs + [
                     '-filter_complex', filter_complex,
                     '-map', '[vout]',
-                    '-map', '[aout]',
+                ] + audio_map_args + [
                     '-c:v', 'libx264',
                     '-preset', 'ultrafast',
                     '-crf', '24',
@@ -553,7 +597,10 @@ class VideoProcessor:
             print("[VideoProcessor] Thử phương án dự phòng (chỉ dùng lồng tiếng trên CPU)...")
             try:
                 shutil.copy2(srt_path, temp_srt) # copy lại srt do đã bị xóa
-                filter_complex_fallback = f"{blur_filter}{logo_filter}{v_in}subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout]"
+                if burn_subtitles and os.path.exists(temp_srt):
+                    filter_complex_fallback = f"{blur_filter}{logo_filter}{v_in}subtitles='{srt_escaped}':force_style='{subtitle_style}'[vout]"
+                else:
+                    filter_complex_fallback = f"{blur_filter}{logo_filter}{v_in}null[vout]" 
                 
                 fallback_inputs = ['-i', video_path]
                 if dubbed_audio_path:
@@ -594,3 +641,143 @@ class VideoProcessor:
         print(f"[VideoProcessor] Đã xuất video: {output_path} ({file_size / 1024 / 1024:.1f} MB)")
 
         return output_path
+    def apply_quick_blur(self, video_path: str, output_path: str,
+                             blur_bars: list[dict] | None = None,
+                             logo_settings: dict | None = None,
+                             progress_callback: Callable[[float], None] | None = None) -> str:
+            """
+            Xuất video che mờ siêu tốc (Quick Blur): Áp dụng thanh làm mờ và watermark/logo ngay lập tức
+            bằng tăng tốc phần cứng GPU mà không cần qua AI nhận diện hay dịch thuật.
+            """
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            if progress_callback:
+                progress_callback(10)
+    
+            # Lấy kích thước video thực tế
+            width, height = 1920, 1080
+            try:
+                cmd = [
+                    FFPROBE_PATH,
+                    '-v', 'error',
+                    '-select_streams', 'v:0',
+                    '-show_entries', 'stream=width,height',
+                    '-of', 'csv=s=x:p=0',
+                    video_path
+                ]
+                res = subprocess.run(cmd, capture_output=True, text=True)
+                if res.returncode == 0:
+                    parts = res.stdout.strip().split('x')
+                    if len(parts) == 2:
+                        width = int(parts[0])
+                        height = int(parts[1])
+            except Exception as e:
+                print(f"[VideoProcessor QuickBlur] Lỗi đọc kích thước video: {e}")
+    
+            # Chuẩn bị chuỗi Blur Bar filter (nếu có)
+            v_in = "[0:v]"
+            blur_filter = ""
+            if blur_bars:
+                active_bars = [b for b in blur_bars if b.get("enabled", True)]
+                if active_bars:
+                    last_v_out = "[0:v]"
+                    for i, bar in enumerate(active_bars):
+                        y_pct = float(bar.get("y_percent", 85))
+                        x_pct = float(bar.get("x_percent", 0))
+                        h_pct = float(bar.get("h_percent", 15))
+                        w_pct = float(bar.get("w_percent", 100))
+                        requested_intensity = int(bar.get("intensity", 15))
+                        
+                        crop_w = width * (w_pct / 100)
+                        crop_h = height * (h_pct / 100)
+                        max_intensity = int(min(crop_w, crop_h) / 2.1)
+                        intensity = min(requested_intensity, max(1, max_intensity), 12)
+                        
+                        v_base = f"[vbase{i}]"
+                        v_orig = f"[vblur_orig{i}]"
+                        v_blurred = f"[vblurred{i}]"
+                        v_out = f"[vpre{i}]"
+                        
+                        chroma_intensity = min(intensity, 10)
+                        blur_filter += (
+                            f"{last_v_out}split{v_base}{v_orig};"
+                            f"{v_orig}crop=iw*{w_pct/100}:ih*{h_pct/100}:iw*{x_pct/100}:ih*{y_pct/100},boxblur={intensity}:1:{chroma_intensity}:1{v_blurred};"
+                            f"{v_base}{v_blurred}overlay=W*{x_pct/100}:H*{y_pct/100}{v_out};"
+                        )
+                        last_v_out = v_out
+                    v_in = last_v_out
+    
+            work_dir = os.path.dirname(output_path)
+            logo_filter = ""
+            logo_input_args = []
+            if logo_settings and logo_settings.get("visible") and logo_settings.get("base64"):
+                import base64
+                logo_data = logo_settings["base64"].split(",")[1]
+                logo_path = os.path.join(work_dir, "logo_quick.png")
+                with open(logo_path, "wb") as f:
+                    f.write(base64.b64decode(logo_data))
+                    
+                logo_size_pct = float(logo_settings.get("size", 15))
+                logo_w = int(width * logo_size_pct / 100)
+                logo_x_pct = float(logo_settings.get("x", 0.05))
+                logo_y_pct = float(logo_settings.get("y", 0.05))
+                logo_opacity = float(logo_settings.get("opacity", 100)) / 100.0
+                
+                logo_filter = (
+                    f"[1:v]scale={logo_w}:-1,format=rgba,colorchannelmixer=aa={logo_opacity}[logo];"
+                    f"{v_in}[logo]overlay=W*{logo_x_pct}:H*{logo_y_pct}[vlogo_out];"
+                )
+                v_in = "[vlogo_out]"
+                logo_input_args = ['-i', logo_path]
+    
+            inputs = ['-i', video_path] + logo_input_args
+            filter_complex = f"{blur_filter}{logo_filter}{v_in}null[vout]"
+    
+            # Helper tạo lệnh ffmpeg
+            def build_cmd(v_encoder, a_codec):
+                c = [FFMPEG_PATH] + inputs + [
+                    '-filter_complex', filter_complex,
+                    '-map', '[vout]',
+                    '-map', '0:a?',
+                    '-c:v', v_encoder,
+                ]
+                if v_encoder == "libx264":
+                    c.extend(['-preset', 'ultrafast', '-crf', '22'])
+                else:
+                    c.extend(['-preset', 'fast'])
+    
+                if a_codec == "copy":
+                    c.extend(['-c:a', 'copy'])
+                else:
+                    c.extend(['-c:a', 'aac', '-b:a', '192k'])
+    
+                c.extend(['-movflags', '+faststart', '-y', '-loglevel', 'warning', output_path])
+                return c
+    
+            encoder = self.get_best_video_encoder()
+            print(f"[VideoProcessor QuickBlur] Đang xuất video che mờ nhanh ({encoder})...")
+            if progress_callback:
+                progress_callback(30)
+    
+            cmd = build_cmd(encoder, "copy")
+            result = subprocess.run(cmd, capture_output=True, text=True)
+    
+            if result.returncode != 0:
+                print(f"[VideoProcessor QuickBlur] Thử lại với âm thanh aac: {result.stderr}")
+                cmd_aac = build_cmd(encoder, "aac")
+                result = subprocess.run(cmd_aac, capture_output=True, text=True)
+    
+            if result.returncode != 0 and encoder != "libx264":
+                print(f"[VideoProcessor QuickBlur] Thử lại bằng bộ mã hóa CPU (libx264): {result.stderr}")
+                cmd_cpu = build_cmd("libx264", "aac")
+                result = subprocess.run(cmd_cpu, capture_output=True, text=True)
+    
+            if result.returncode != 0:
+                raise RuntimeError(f"Lỗi xuất video che mờ nhanh: {result.stderr}")
+    
+            if progress_callback:
+                progress_callback(100)
+    
+            file_size = os.path.getsize(output_path) if os.path.exists(output_path) else 0
+            print(f"[VideoProcessor QuickBlur] Đã xuất video che mờ xong: {output_path} ({file_size / 1024 / 1024:.1f} MB)")
+            return output_path
+    
