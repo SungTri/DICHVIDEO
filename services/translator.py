@@ -88,6 +88,8 @@ CÁC NGUYÊN TẮC BẮT BUỘC KHÔNG ĐƯỢC VI PHẠM:
      * '一点哦' / '小心点': Nhẹ tay thôi nhé / Cẩn thận nhé.
      * '躲雨' (trú mưa/trốn mưa) ➔ STT nghe nhầm thành '夺鱼' (bắt cá).
      * '猫咪' / '小猫' (mèo) ➔ STT nghe nhầm thành '毛衣' (áo len).
+     * '星辰' (Xīngchén): Nghĩa là 'Những vì sao / Tinh tú / Bầu trời sao / Ánh sao' (Tuyệt đối KHÔNG dịch Hán-Việt máy móc thành 'Tinh thần' gây nhầm với tâm trạng/ý chí).
+     * '精神' (Jīngshén): Mới dịch là 'Tinh thần / Sức sống / Ý chí'.
    - AI PHẢI LIÊN KẾT TẤT CẢ CÁC CÂU TRONG BATCH ĐỂ CHO RA BẢN DỊCH HỢP LOGIC, TỰ NHIÊN NHẤT.
 3. NGUYÊN TẮC CÔ ĐỌNG VỪA KHÍT THỜI GIAN LỒNG TIẾNG (DUBBING PACING):
    - Bản dịch tiếng Việt BẮT BUỘC PHẢI NGẮN GỌN, SÚC TÍCH, DỄ ĐỌC NHANH, KHÔNG VƯỢT QUÁ số từ 'max_vietnamese_words'.
