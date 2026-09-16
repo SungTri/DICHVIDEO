@@ -172,6 +172,7 @@ class Transcriber:
             else:
                 raise cuda_err
 
+        total_duration = getattr(info, 'duration', 0) or 0
         raw_segs = self._extract_segments_from_whisper(segments_list, total_duration=total_duration)
         raw_segs.sort(key=lambda x: x['start'])
 
