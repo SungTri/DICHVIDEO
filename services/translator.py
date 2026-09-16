@@ -60,12 +60,13 @@ class Translator:
         for s in input_data:
             start_t = s.get('start', 0)
             end_t = s.get('end', 0)
-            dur = max(0.5, round(end_t - start_t, 2)) if end_t > start_t else 2.0
-            # Tốc độ đọc tự nhiên tiếng Việt ~ 3.5 từ/giây
-            max_words = max(3, int(dur * 3.5))
+            src_text = s.get('text', '')
+            dur = max(1.0, round(end_t - start_t, 2)) if end_t > start_t else max(2.5, len(str(src_text)) * 0.4)
+            # Tốc độ đọc tự nhiên tiếng Việt chuẩn ~ 4.2 từ/giây (đủ rộng để không bị cắt xén ý nghĩa)
+            max_words = max(10, int(dur * 4.5))
             formatted_inputs.append({
                 "index": s['index'],
-                "source_text": s.get('text', ''),
+                "source_text": src_text,
                 "time_limit_sec": dur,
                 "max_vietnamese_words": max_words
             })
@@ -91,9 +92,10 @@ CÁC NGUYÊN TẮC BẮT BUỘC KHÔNG ĐƯỢC VI PHẠM:
      * '星辰' (Xīngchén): Nghĩa là 'Những vì sao / Tinh tú / Bầu trời sao / Ánh sao' (Tuyệt đối KHÔNG dịch Hán-Việt máy móc thành 'Tinh thần' gây nhầm với tâm trạng/ý chí).
      * '精神' (Jīngshén): Mới dịch là 'Tinh thần / Sức sống / Ý chí'.
    - AI PHẢI LIÊN KẾT TẤT CẢ CÁC CÂU TRONG BATCH ĐỂ CHO RA BẢN DỊCH HỢP LOGIC, TỰ NHIÊN NHẤT.
-3. NGUYÊN TẮC CÔ ĐỌNG VỪA KHÍT THỜI GIAN LỒNG TIẾNG (DUBBING PACING):
-   - Bản dịch tiếng Việt BẮT BUỘC PHẢI NGẮN GỌN, SÚC TÍCH, DỄ ĐỌC NHANH, KHÔNG VƯỢT QUÁ số từ 'max_vietnamese_words'.
-   - Tuyệt đối KHÔNG dịch rườm rà, dài dòng, thêm thắt từ ngữ thừa thãi.
+3. NGUYÊN TẮC ĐẦY ĐỦ Ý NGHĨA & VỪA KHÍT THỜI GIAN LỒNG TIẾNG (DUBBING PACING):
+   - DỊCH ĐẦY ĐỦ 100% NỘI DUNG VÀ Ý NGHĨA CỦA CÂU: Tuyệt đối KHÔNG tự ý cắt bớt từ ngữ, lược bỏ tình tiết hay thông tin quan trọng của nhân vật.
+   - Bản dịch tiếng Việt cần tự nhiên, lưu loát, súc tích, đọc vừa vặn trong khoảng số từ 'max_vietnamese_words'.
+   - Tránh dùng từ ngữ rườm rà sáo rỗng gây kéo dài thời gian phát âm.
 4. VĂN PHONG TỰ NHIÊN, CHUẨN ĐIỆN ẢNH:
    - Dịch mượt mà, xưng hô phù hợp ngữ cảnh, sửa lỗi chính tả phát âm STT.
 5. MỖI BẢN DỊCH LÀ 1 DÒNG DUY NHẤT:
@@ -107,17 +109,34 @@ Danh sách phụ đề đầu vào:
 BẮT BUỘC TRẢ VỀ: Chỉ trả về duy nhất 1 JSON Array hợp lệ gồm các object có đúng 2 key: "index" (int) và "text" (string, bản dịch tiếng Việt súc tích ngắn gọn). Tuyệt đối không thêm lời giải thích hay bọc mã."""
 
     def _parse_api_response(self, raw_text, json_module):
-        """Phân tích JSON trả về từ API, hỗ trợ cả dạng array và object."""
-        # Làm sạch markdown block markers
-        if raw_text.startswith("```"):
-            lines = raw_text.split("\n")
-            if lines[0].startswith("```"):
-                lines = lines[1:]
-            if lines[-1].strip() == "```":
-                lines = lines[:-1]
-            raw_text = "\n".join(lines).strip()
+        """Phân tích JSON trả về từ API, hỗ trợ cả dạng array, object và bọc markdown/preamble."""
+        import re
+        cleaned = str(raw_text).strip()
+        # 1. Bóc tách khối markdown ```json ... ``` nếu có
+        m_code = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", cleaned)
+        if m_code:
+            cleaned = m_code.group(1).strip()
 
-        translated_list = json_module.loads(raw_text)
+        # 2. Thử parse trực tiếp
+        try:
+            translated_list = json_module.loads(cleaned)
+        except Exception:
+            # 3. Tìm khối [ ... ] hoặc { ... }
+            m_arr = re.search(r"(\[[\s\S]*\])", cleaned)
+            if m_arr:
+                try:
+                    translated_list = json_module.loads(m_arr.group(1))
+                except Exception:
+                    translated_list = []
+            else:
+                m_obj = re.search(r"(\{[\s\S]*\})", cleaned)
+                if m_obj:
+                    try:
+                        translated_list = json_module.loads(m_obj.group(1))
+                    except Exception:
+                        translated_list = {}
+                else:
+                    translated_list = []
 
         # Nếu API trả về Object thay vì Array, bóc tách mảng bên trong
         if isinstance(translated_list, dict):
@@ -125,6 +144,9 @@ BẮT BUỘC TRẢ VỀ: Chỉ trả về duy nhất 1 JSON Array hợp lệ g�
                 if isinstance(val, list):
                     translated_list = val
                     break
+
+        if not isinstance(translated_list, list):
+            return {}
 
         return {
             int(item["index"]): str(item["text"]).strip()
@@ -298,7 +320,7 @@ BẮT BUỘC TRẢ VỀ: Chỉ trả về duy nhất 1 JSON Array hợp lệ g�
                 if not untranslated:
                     continue
 
-                input_data = [{"index": seg["index"], "text": seg["text"]} for seg in untranslated]
+                input_data = [{"index": seg["index"], "text": seg["text"], "start": seg.get("start", 0), "end": seg.get("end", 0)} for seg in untranslated]
 
                 import time
                 max_retries = 3
@@ -356,7 +378,7 @@ BẮT BUỘC TRẢ VỀ: Chỉ trả về duy nhất 1 JSON Array hợp lệ g�
             print(f"🧹 [Translator] Phát hiện {len(missing_segs)} đoạn chưa có bản dịch. Bắt đầu Vòng Quét Vét AI 100%...")
             for i in range(0, len(missing_segs), 15):
                 sub_batch = missing_segs[i:i + 15]
-                input_data = [{"index": seg["index"], "text": seg["text"]} for seg in sub_batch]
+                input_data = [{"index": seg["index"], "text": seg["text"], "start": seg.get("start", 0), "end": seg.get("end", 0)} for seg in sub_batch]
                 for k_idx, k_val in enumerate(g_keys):
                     try:
                         sweep_res = self._call_gemini(input_data, json, urllib.request, k_val, from_lang, context_prompt, "gemini-flash-lite-latest")
