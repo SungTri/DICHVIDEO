@@ -172,32 +172,99 @@ class Transcriber:
             else:
                 raise cuda_err
 
-        # Chuyển đổi chuẩn xác từng câu thoại theo đúng thời gian nói thực tế
-        result = []
-        total_duration = getattr(info, 'duration', 0) or 0
+        raw_segs = self._extract_segments_from_whisper(segments_list, total_duration=total_duration)
+        raw_segs.sort(key=lambda x: x['start'])
 
+        # --- ZERO-DROP GAP RECOVERY SWEEPER ---
+        # Tự động quét và khôi phục 100% các khoảng trống thoại (gaps >= 2.0s) bị Whisper bỏ sót do nhạc nền
+        gaps_to_sweep = []
+        if raw_segs and raw_segs[0]['start'] >= 2.0:
+            gaps_to_sweep.append((0.0, raw_segs[0]['start']))
+
+        for i in range(len(raw_segs) - 1):
+            cur_end = raw_segs[i]['end']
+            next_start = raw_segs[i+1]['start']
+            if (next_start - cur_end) >= 2.0:
+                gaps_to_sweep.append((cur_end, next_start))
+
+        if raw_segs and total_duration > 0 and (total_duration - raw_segs[-1]['end']) >= 2.0:
+            gaps_to_sweep.append((raw_segs[-1]['end'], total_duration))
+
+        recovered_segs = []
+        if gaps_to_sweep and os.path.exists(audio_path):
+            job_dir = os.path.dirname(audio_path)
+            for g_idx, (g_start, g_end) in enumerate(gaps_to_sweep):
+                g_dur = g_end - g_start
+                gap_wav = os.path.join(job_dir, f"gap_sweep_{g_idx}_{os.getpid()}.wav")
+                cmd = [
+                    "ffmpeg", "-y", "-ss", f"{g_start:.3f}", "-to", f"{g_end:.3f}",
+                    "-i", audio_path, "-vn", "-ar", "16000", "-ac", "1", gap_wav
+                ]
+                try:
+                    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    if os.path.exists(gap_wav) and os.path.getsize(gap_wav) > 1000:
+                        sub_gen, _ = model.transcribe(
+                            gap_wav,
+                            beam_size=5,
+                            language=lang,
+                            condition_on_previous_text=False,
+                            vad_filter=False,
+                            word_timestamps=True,
+                            no_speech_threshold=0.6
+                        )
+                        sub_list = list(sub_gen)
+                        recovered = self._extract_segments_from_whisper(sub_list, total_duration=0, offset=g_start)
+                        if recovered:
+                            recovered_segs.extend(recovered)
+                            print(f"✨ [Transcriber Zero-Drop] Đã khôi phục {len(recovered)} câu thoại trong khoảng trống [{g_start:.2f}s -> {g_end:.2f}s] ({g_dur:.1f}s)!")
+                except Exception as sweep_err:
+                    print(f"⚠️ [Transcriber Zero-Drop] Bỏ qua lỗi quét khoảng trống {g_idx}: {sweep_err}")
+                finally:
+                    if os.path.exists(gap_wav):
+                        try:
+                            os.remove(gap_wav)
+                        except Exception:
+                            pass
+
+        all_segs = raw_segs + recovered_segs
+        all_segs.sort(key=lambda x: x['start'])
+
+        # Gán lại index và đóng gói kết quả
+        result = []
+        for i, s in enumerate(all_segs, 1):
+            result.append({
+                'index': i,
+                'start': s['start'],
+                'end': s['end'],
+                'text': s['text']
+            })
+
+        print(f"[Transcriber] Hoàn tất nhận diện {len(result)} câu thoại (bao gồm {len(recovered_segs)} câu khôi phục từ khoảng trống) chuẩn xác thời gian.")
+        return result
+
+    def _extract_segments_from_whisper(self, segments_list: list, total_duration: float = 0, offset: float = 0.0) -> list:
+        """Trích xuất và phân tách câu thông minh theo từng cụm từ thực tế kèm offset thời gian."""
+        result = []
         for seg in segments_list:
             text_val = seg.text.strip()
             if not text_val:
                 continue
 
-            if total_duration > 0 and seg.start >= (total_duration - 0.2):
+            if total_duration > 0 and (offset + seg.start) >= (total_duration - 0.2):
                 break
 
-            # Phân tách câu thông minh theo từng cụm từ thực tế (loại bỏ tiếng bập bẹ/ngắt quãng lớn > 1.2s)
             if getattr(seg, 'words', None) and len(seg.words) > 0:
                 current_chunk_words = [seg.words[0]]
                 for w in seg.words[1:]:
                     prev_w = current_chunk_words[-1]
-                    # Nếu giữa 2 từ có khoảng im lặng/bập bẹ lớn >= 1.2s -> Tách thành câu riêng biệt
                     if (w.start - prev_w.end) >= 1.2:
                         txt_chunk = "".join(x.word for x in current_chunk_words).strip()
-                        # Bỏ qua nếu chỉ là 1 âm đơn bập bẹ với độ tin cậy thấp
                         if not (len(current_chunk_words) == 1 and current_chunk_words[0].probability < 0.45):
+                            abs_s = round(offset + current_chunk_words[0].start, 3)
+                            abs_e = round(offset + (min(current_chunk_words[-1].end, total_duration - offset) if total_duration > 0 else current_chunk_words[-1].end), 3)
                             result.append({
-                                'index': len(result) + 1,
-                                'start': round(current_chunk_words[0].start, 3),
-                                'end': round(min(current_chunk_words[-1].end, total_duration) if total_duration > 0 else current_chunk_words[-1].end, 3),
+                                'start': abs_s,
+                                'end': abs_e,
                                 'text': txt_chunk
                             })
                         current_chunk_words = [w]
@@ -207,22 +274,20 @@ class Transcriber:
                 if current_chunk_words:
                     txt_chunk = "".join(x.word for x in current_chunk_words).strip()
                     if not (len(current_chunk_words) == 1 and current_chunk_words[0].probability < 0.45):
+                        abs_s = round(offset + current_chunk_words[0].start, 3)
+                        abs_e = round(offset + (min(current_chunk_words[-1].end, total_duration - offset) if total_duration > 0 else current_chunk_words[-1].end), 3)
                         result.append({
-                            'index': len(result) + 1,
-                            'start': round(current_chunk_words[0].start, 3),
-                            'end': round(min(current_chunk_words[-1].end, total_duration) if total_duration > 0 else current_chunk_words[-1].end, 3),
+                            'start': abs_s,
+                            'end': abs_e,
                             'text': txt_chunk
                         })
             else:
-                seg_end = min(seg.end, total_duration) if total_duration > 0 else seg.end
+                seg_end = min(seg.end, total_duration - offset) if total_duration > 0 else seg.end
                 result.append({
-                    'index': len(result) + 1,
-                    'start': round(seg.start, 3),
-                    'end': round(seg_end, 3),
+                    'start': round(offset + seg.start, 3),
+                    'end': round(offset + seg_end, 3),
                     'text': text_val
                 })
-
-        print(f"[Transcriber] Hoàn tất nhận diện {len(result)} câu thoại chuẩn xác thời gian (khử 100% chồng lấn).")
         return result
 
     @staticmethod
