@@ -176,25 +176,42 @@ class Transcriber:
         raw_segs = self._extract_segments_from_whisper(segments_list, total_duration=total_duration)
         raw_segs.sort(key=lambda x: x['start'])
 
-        # --- ZERO-DROP GAP RECOVERY SWEEPER ---
-        # Tự động quét và khôi phục 100% các khoảng trống thoại (gaps >= 2.0s) bị Whisper bỏ sót do nhạc nền
-        gaps_to_sweep = []
-        if raw_segs and raw_segs[0]['start'] >= 2.0:
-            gaps_to_sweep.append((0.0, raw_segs[0]['start']))
+        # --- ZERO-DROP & BLOATED-SEGMENT DEEP RECOVERY SWEEPER ---
+        # Tự động quét và khôi phục 100% các khoảng trống thoại (gaps >= 1.5s) và các câu bị kéo dài giả tạo (bloated)
+        sweep_spans = []
+        if raw_segs and raw_segs[0]['start'] >= 1.5:
+            sweep_spans.append((0.0, raw_segs[0]['start'], 'gap_lead', None))
 
         for i in range(len(raw_segs) - 1):
-            cur_end = raw_segs[i]['end']
-            next_start = raw_segs[i+1]['start']
-            if (next_start - cur_end) >= 2.0:
-                gaps_to_sweep.append((cur_end, next_start))
+            cur_s = raw_segs[i]['start']
+            cur_e = raw_segs[i]['end']
+            cur_dur = cur_e - cur_s
+            cur_txt = raw_segs[i]['text']
+            next_s = raw_segs[i+1]['start']
+            
+            # Quét sâu các câu bị Whisper gán mốc thời gian quá dài nhưng ít chữ (bloated)
+            if cur_dur >= 3.2 and len(cur_txt) < (cur_dur * 2.2):
+                sweep_spans.append((cur_s, cur_e, 'bloated_seg', i))
+            
+            # Quét các khoảng trống giữa 2 câu
+            if (next_s - cur_e) >= 1.5:
+                sweep_spans.append((cur_e, next_s, 'gap', None))
 
-        if raw_segs and total_duration > 0 and (total_duration - raw_segs[-1]['end']) >= 2.0:
-            gaps_to_sweep.append((raw_segs[-1]['end'], total_duration))
+        if raw_segs:
+            last_s = raw_segs[-1]['start']
+            last_e = raw_segs[-1]['end']
+            last_dur = last_e - last_s
+            last_txt = raw_segs[-1]['text']
+            if last_dur >= 3.2 and len(last_txt) < (last_dur * 2.2):
+                sweep_spans.append((last_s, last_e, 'bloated_seg', len(raw_segs)-1))
+            if total_duration > 0 and (total_duration - last_e) >= 1.5:
+                sweep_spans.append((last_e, total_duration, 'gap_trail', None))
 
         recovered_segs = []
-        if gaps_to_sweep and os.path.exists(audio_path):
+        bloated_indices_to_replace = set()
+        if sweep_spans and os.path.exists(audio_path):
             job_dir = os.path.dirname(audio_path)
-            for g_idx, (g_start, g_end) in enumerate(gaps_to_sweep):
+            for g_idx, (g_start, g_end, g_type, seg_idx) in enumerate(sweep_spans):
                 g_dur = g_end - g_start
                 gap_wav = os.path.join(job_dir, f"gap_sweep_{g_idx}_{os.getpid()}.wav")
                 cmd = [
@@ -216,8 +233,16 @@ class Transcriber:
                         sub_list = list(sub_gen)
                         recovered = self._extract_segments_from_whisper(sub_list, total_duration=0, offset=g_start)
                         if recovered:
-                            recovered_segs.extend(recovered)
-                            print(f"✨ [Transcriber Zero-Drop] Đã khôi phục {len(recovered)} câu thoại trong khoảng trống [{g_start:.2f}s -> {g_end:.2f}s] ({g_dur:.1f}s)!")
+                            if g_type == 'bloated_seg' and seg_idx is not None:
+                                orig_txt = raw_segs[seg_idx]['text']
+                                total_rec_txt = "".join(x['text'] for x in recovered)
+                                if len(total_rec_txt) > len(orig_txt):
+                                    bloated_indices_to_replace.add(seg_idx)
+                                    recovered_segs.extend(recovered)
+                                    print(f"✨ [Transcriber Zero-Drop] Đã thay thế câu kéo dài [{g_start:.2f}s -> {g_end:.2f}s] bằng {len(recovered)} câu thoại chi tiết!")
+                            else:
+                                recovered_segs.extend(recovered)
+                                print(f"✨ [Transcriber Zero-Drop] Đã khôi phục {len(recovered)} câu thoại trong khoảng trống [{g_start:.2f}s -> {g_end:.2f}s] ({g_dur:.1f}s)!")
                 except Exception as sweep_err:
                     print(f"⚠️ [Transcriber Zero-Drop] Bỏ qua lỗi quét khoảng trống {g_idx}: {sweep_err}")
                 finally:
@@ -227,7 +252,8 @@ class Transcriber:
                         except Exception:
                             pass
 
-        all_segs = raw_segs + recovered_segs
+        final_raw = [s for idx, s in enumerate(raw_segs) if idx not in bloated_indices_to_replace]
+        all_segs = final_raw + recovered_segs
         all_segs.sort(key=lambda x: x['start'])
 
         # Gán lại index và đóng gói kết quả
